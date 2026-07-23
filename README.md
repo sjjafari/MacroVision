@@ -1,9 +1,10 @@
 # MacroVision
 
-MacroVision is an Investment Decision Intelligence Platform. Version 0.2 provides a
+MacroVision is an Investment Decision Intelligence Platform. Version 0.3 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
-research journals, and transaction-driven portfolio accounting. It is not a trading
-signal bot and does not connect to brokers or execute trades.
+research journals, transaction-driven portfolio accounting, and versioned investment
+decision cases. It is not a trading signal bot and does not connect to brokers or
+execute trades.
 
 ## Decision principles
 
@@ -28,6 +29,11 @@ Portfolio API        src/macrovision/portfolio_api.py
 Portfolio accounting src/macrovision/portfolio_services.py
 Portfolio contracts  src/macrovision/portfolio_schemas.py
 Portfolio storage    src/macrovision/portfolio_models.py
+Decision API         src/macrovision/decision_api.py
+Decision rules       src/macrovision/decision_services.py
+Decision contracts   src/macrovision/decision_schemas.py
+Decision storage     src/macrovision/decision_models.py
+Exact value types    src/macrovision/persistence_types.py
 Schema history       migrations/
 Configuration        src/macrovision/config.py
 ```
@@ -93,8 +99,8 @@ Or run each check:
 ## Docker
 
 ```powershell
-docker build -t macrovision:0.2 .
-docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.2
+docker build -t macrovision:0.3 .
+docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.3
 ```
 
 The container applies pending migrations before starting the API and persists SQLite
@@ -141,3 +147,37 @@ integers so Decimal values round-trip exactly. Requests outside the supported st
 range are rejected. Trade cost basis and sell P&L are gross of fees: fees are separate,
 immutable expense transactions that reduce cash and portfolio-level realized P&L, but
 do not rewrite a position's average cost.
+
+## Decision workflow (v0.3)
+
+Decision cases separate hypotheses, supporting evidence, opposing evidence, independent
+criticism, invalidation conditions, and documented outcomes. Probability and confidence
+are separate six-decimal values from zero to one; they communicate uncertainty rather
+than certainty.
+
+1. Create a draft with `POST /api/v1/decisions`.
+2. Add one or more hypotheses with
+   `POST /api/v1/decisions/{decision_id}/hypotheses`.
+3. Add `supporting` and `opposing` evidence separately through
+   `POST /api/v1/decisions/{decision_id}/evidence`.
+4. Record an independent critic review at
+   `POST /api/v1/decisions/{decision_id}/critic-reviews`.
+5. Define explicit observable invalidation rules through
+   `POST /api/v1/decisions/{decision_id}/invalidation-rules`.
+6. Activate only after every completeness gate passes with
+   `POST /api/v1/decisions/{decision_id}/activate`.
+7. Change probability, confidence, or rationale only through
+   `POST /api/v1/decisions/{decision_id}/revise`; this appends a version rather than
+   overwriting history.
+8. Invalidate an active case with
+   `POST /api/v1/decisions/{decision_id}/invalidate`, or close it with an outcome,
+   lessons, and accuracy assessment at
+   `POST /api/v1/decisions/{decision_id}/close`.
+9. Read the immutable version history from
+   `GET /api/v1/decisions/{decision_id}/history`.
+
+Draft and under-review cases can accumulate documented research. Active cases can accept
+new evidence but must use a revision to change their probability, confidence, or
+rationale. Invalidated and closed cases are terminal. Decision records are research and
+governance artifacts only: v0.3 does not call AI providers, generate automated
+recommendations, or connect to brokers.

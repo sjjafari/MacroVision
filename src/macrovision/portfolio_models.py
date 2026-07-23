@@ -1,10 +1,8 @@
 from datetime import datetime
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import Decimal
 from enum import StrEnum
-from typing import Any
 
 from sqlalchemy import (
-    BigInteger,
     CheckConstraint,
     DateTime,
     Enum,
@@ -16,44 +14,14 @@ from sqlalchemy import (
     event,
     func,
 )
-from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.types import TypeDecorator
 
 from macrovision.database import Base
+from macrovision.persistence_types import ScaledDecimal
 
 MONEY_PRECISION = 28
 MONEY_SCALE = 8
 QUANTITY_SCALE = 10
-
-
-class ScaledDecimal(TypeDecorator[Decimal]):
-    """Store Decimal values as scaled 64-bit integers for exact SQLite round trips."""
-
-    impl = BigInteger
-    cache_ok = True
-
-    def __init__(self, scale: int) -> None:
-        super().__init__()
-        self.scale = scale
-        self.multiplier = Decimal(10) ** scale
-        self.quantum = Decimal(1).scaleb(-scale)
-
-    def process_bind_param(self, value: Any, dialect: Dialect) -> int | None:
-        del dialect
-        if value is None:
-            return None
-        if not isinstance(value, Decimal):
-            raise TypeError("Financial database values must be Decimal instances")
-        decimal_value = value.quantize(self.quantum, rounding=ROUND_HALF_EVEN)
-        scaled = decimal_value * self.multiplier
-        return int(scaled)
-
-    def process_result_value(self, value: Any, dialect: Dialect) -> Decimal | None:
-        del dialect
-        if value is None:
-            return None
-        return (Decimal(value) / self.multiplier).quantize(self.quantum, rounding=ROUND_HALF_EVEN)
 
 
 MoneyValue = ScaledDecimal(MONEY_SCALE)
