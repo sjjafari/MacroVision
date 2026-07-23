@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from macrovision.api import router, system_router
+from macrovision.portfolio_api import router as portfolio_router
 
 
 @asynccontextmanager
@@ -14,7 +15,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="MacroVision API",
-    version="0.1.0",
+    version="0.2.0",
     description=(
         "Investment Decision Intelligence Platform for hypothesis-driven research, "
         "risk budgeting, and evidence-based learning. It does not provide trading signals."
@@ -23,3 +24,4 @@ app = FastAPI(
 )
 app.include_router(system_router)
 app.include_router(router, prefix="/api/v1")
+app.include_router(portfolio_router, prefix="/api/v1")
