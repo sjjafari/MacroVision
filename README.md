@@ -1,10 +1,10 @@
 # MacroVision
 
-MacroVision is an Investment Decision Intelligence Platform. Version 0.3 provides a
+MacroVision is an Investment Decision Intelligence Platform. Version 0.4 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
-decision cases. It is not a trading signal bot and does not connect to brokers or
-execute trades.
+decision cases, plus immutable-vintage macroeconomic and market-data storage. It is not
+a trading signal bot and does not connect to brokers or execute trades.
 
 ## Decision principles
 
@@ -99,8 +99,8 @@ Or run each check:
 ## Docker
 
 ```powershell
-docker build -t macrovision:0.3 .
-docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.3
+docker build -t macrovision:0.4 .
+docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.4
 ```
 
 The container applies pending migrations before starting the API and persists SQLite
@@ -115,7 +115,7 @@ data in the `macrovision-data` volume.
    `POST /api/v1/journals/{journal_id}/close`.
 
 This version is for research and decision documentation only. It does not offer
-personalized financial advice, market data ingestion, authentication, AI model calls,
+personalized financial advice, external market-data providers, authentication, AI model calls,
 portfolio optimization, real trading, or brokerage integration.
 
 ## Portfolio workflow (v0.2)
@@ -181,3 +181,41 @@ new evidence but must use a revision to change their probability, confidence, or
 rationale. Invalidated and closed cases are terminal. Decision records are research and
 governance artifacts only: v0.3 does not call AI providers, generate automated
 recommendations, or connect to brokers.
+
+## Macro Data workflow (v0.4)
+
+The Macro Data Engine stores manually supplied or file-derived macroeconomic and market
+series without connecting to external providers. Values use exact Decimal arithmetic and
+are stored as signed 64-bit integers scaled to eight decimal places. All API timestamps
+must include an offset and are normalized to UTC.
+
+1. Register a documented source with `POST /api/v1/data-sources`.
+2. Define a series and its frequency, unit, geography, seasonal-adjustment status, source,
+   publication lag, optional currency, metadata, and optional quality thresholds through
+   `POST /api/v1/data-series`.
+3. Add an observation with
+   `POST /api/v1/data-series/{series_id}/observations`. A present observation requires an
+   exact value; a missing observation requires `status=missing` and `value=null`.
+4. Correct an existing series/timestamp by posting it again with `revision_reason`.
+   MacroVision appends an immutable `DataRevision`; the original observation is not
+   overwritten.
+5. Read the current value from `GET /api/v1/data-series/{series_id}/latest`, the complete
+   ordered series from `GET /api/v1/data-series/{series_id}/observations`, a historical
+   vintage from `GET /api/v1/data-series/{series_id}/observations/as-of?as_of=...`, and an
+   observation's revision history from
+   `GET /api/v1/data-series/{series_id}/observations/{observation_id}/revisions`.
+6. Import validated rows through `POST /api/v1/data-imports`. Imports are atomic by
+   default. Set `partial_mode=true` to retain valid rows and explicitly count rejected
+   domain-invalid rows. Reusing an idempotency key returns the original batch and creates
+   no duplicate observations.
+7. Review detected range, frequency, staleness, duplicate, timestamp, and change issues at
+   `GET /api/v1/data-quality/issues`; acknowledge or resolve them through their explicit
+   action endpoints.
+8. Patch mutable series metadata with `PATCH /api/v1/data-series/{series_id}` using the
+   current `expected_lock_version`. Quality-issue transitions use the same stale-write
+   protection.
+
+Historical observations, revisions, and completed import batches are immutable. Quality
+issues never rewrite source data. v0.4 intentionally excludes FRED, World Bank, IMF,
+central-bank and other external integrations, web scraping, schedulers, AI analysis,
+trading recommendations, authentication, brokers, and FX conversion.

@@ -3,7 +3,12 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from macrovision import decision_models, models, portfolio_models  # noqa: F401
+from macrovision import (  # noqa: F401
+    decision_models,
+    macro_data_models,
+    models,
+    portfolio_models,
+)
 from macrovision.config import get_settings
 from macrovision.database import Base
 
