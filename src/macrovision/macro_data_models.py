@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, cast
@@ -7,6 +7,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
+    Date,
     Enum,
     ForeignKey,
     Index,
@@ -111,6 +112,7 @@ class DataSeries(Base):
         ForeignKey("data_sources.id", ondelete="RESTRICT"), index=True
     )
     code: Mapped[str] = mapped_column(String(120), unique=True)
+    provider_series_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     name: Mapped[str] = mapped_column(String(240), index=True)
     description: Mapped[str] = mapped_column(Text, default="")
     category: Mapped[SeriesCategory] = mapped_column(Enum(SeriesCategory), index=True)
@@ -152,6 +154,15 @@ class DataSeries(Base):
             name="ck_series_change_nonnegative",
         ),
         CheckConstraint("lock_version > 0", name="ck_series_lock_version"),
+        CheckConstraint(
+            "provider_series_id IS NULL OR LENGTH(provider_series_id) > 0",
+            name="ck_series_provider_id_nonempty",
+        ),
+        UniqueConstraint(
+            "source_id",
+            "provider_series_id",
+            name="uq_data_series_source_provider_id",
+        ),
         Index("ix_data_series_active_category", "is_active", "category"),
     )
     __mapper_args__ = {  # noqa: RUF012
@@ -178,6 +189,7 @@ class DataImportBatch(Base):
     rejected_rows: Mapped[int]
     partial_mode: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str] = mapped_column(Text, default="")
+    provider_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     source: Mapped[DataSource] = relationship(back_populates="import_batches")
     observations: Mapped[list["DataObservation"]] = relationship(
@@ -237,8 +249,11 @@ class DataObservation(Base):
         ForeignKey("data_import_batches.id", ondelete="RESTRICT"), nullable=True
     )
     observed_at: Mapped[datetime] = mapped_column(UTCDateTime())
-    publication_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
+    publication_timestamp: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     ingestion_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
+    provider_vintage_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    provider_vintage_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    provider_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     value: Mapped[Decimal | None] = mapped_column(DataValue, nullable=True)
     status: Mapped[ObservationStatus] = mapped_column(Enum(ObservationStatus))
     source_reference: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -259,11 +274,17 @@ class DataObservation(Base):
             name="ck_observation_status_value",
         ),
         CheckConstraint(
-            "publication_timestamp >= observed_at", name="ck_observation_publication_time"
+            "publication_timestamp IS NULL OR publication_timestamp >= observed_at",
+            name="ck_observation_publication_time",
         ),
         CheckConstraint(
-            "ingestion_timestamp >= publication_timestamp",
+            "publication_timestamp IS NULL OR ingestion_timestamp >= publication_timestamp",
             name="ck_observation_ingestion_time",
+        ),
+        CheckConstraint(
+            "provider_vintage_end IS NULL OR provider_vintage_start IS NULL OR "
+            "provider_vintage_end >= provider_vintage_start",
+            name="ck_observation_vintage_range",
         ),
         Index("ix_observation_series_observed", "series_id", "observed_at"),
         Index("ix_observation_series_ingested", "series_id", "ingestion_timestamp"),
@@ -285,8 +306,11 @@ class DataRevision(Base):
     revised_value: Mapped[Decimal | None] = mapped_column(DataValue, nullable=True)
     previous_status: Mapped[ObservationStatus] = mapped_column(Enum(ObservationStatus))
     revised_status: Mapped[ObservationStatus] = mapped_column(Enum(ObservationStatus))
-    publication_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
+    publication_timestamp: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     revision_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
+    provider_vintage_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    provider_vintage_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    provider_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     reason: Mapped[str] = mapped_column(Text)
     source_reference: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
@@ -305,6 +329,11 @@ class DataRevision(Base):
             "(revised_status = 'present' AND revised_value IS NOT NULL) OR "
             "(revised_status = 'missing' AND revised_value IS NULL)",
             name="ck_revision_revised_status_value",
+        ),
+        CheckConstraint(
+            "provider_vintage_end IS NULL OR provider_vintage_start IS NULL OR "
+            "provider_vintage_end >= provider_vintage_start",
+            name="ck_revision_vintage_range",
         ),
         Index("ix_revision_observation_time", "observation_id", "revision_timestamp"),
     )

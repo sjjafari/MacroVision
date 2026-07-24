@@ -1,7 +1,7 @@
 import hashlib
 import json
 from contextlib import nullcontext
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -121,6 +121,7 @@ def series_to_read(series: models.DataSeries) -> schemas.DataSeriesRead:
         id=series.id,
         source_id=series.source_id,
         code=series.code,
+        provider_series_id=series.provider_series_id,
         name=series.name,
         description=series.description,
         category=series.category,
@@ -151,10 +152,13 @@ def _effective_state(
 ) -> tuple[
     Decimal | None,
     models.ObservationStatus,
-    datetime,
+    datetime | None,
     datetime,
     str | None,
     int,
+    date | None,
+    date | None,
+    dict[str, Any],
 ]:
     revisions = sorted(observation.revisions, key=lambda revision: revision.sequence)
     if as_of is not None:
@@ -167,6 +171,9 @@ def _effective_state(
             observation.ingestion_timestamp,
             observation.source_reference,
             0,
+            observation.provider_vintage_start,
+            observation.provider_vintage_end,
+            observation.provider_metadata,
         )
     revision = revisions[-1]
     return (
@@ -176,21 +183,35 @@ def _effective_state(
         revision.revision_timestamp,
         revision.source_reference,
         len(revisions),
+        revision.provider_vintage_start,
+        revision.provider_vintage_end,
+        revision.provider_metadata,
     )
 
 
 def observation_to_read(
     observation: models.DataObservation, *, as_of: datetime | None = None
 ) -> schemas.ObservationRead:
-    value, status, publication, ingestion, reference, revision_count = _effective_state(
-        observation, as_of
-    )
+    (
+        value,
+        status,
+        publication,
+        ingestion,
+        reference,
+        revision_count,
+        vintage_start,
+        vintage_end,
+        provider_metadata,
+    ) = _effective_state(observation, as_of)
     return schemas.ObservationRead(
         id=observation.id,
         series_id=observation.series_id,
         observed_at=observation.observed_at,
         publication_timestamp=publication,
         ingestion_timestamp=ingestion,
+        provider_vintage_start=vintage_start,
+        provider_vintage_end=vintage_end,
+        provider_metadata=provider_metadata,
         value=value,
         status=status,
         source_reference=reference,
@@ -287,13 +308,13 @@ def _quality_checks(
 def _write_observation(
     session: Session,
     series: models.DataSeries,
-    payload: schemas.ObservationWrite,
+    payload: schemas.ObservationWriteBase,
     *,
     import_batch_id: int | None = None,
     ingestion_timestamp: datetime | None = None,
 ) -> models.DataObservation:
     ingested_at = ingestion_timestamp or _now()
-    if payload.publication_timestamp > ingested_at:
+    if payload.publication_timestamp is not None and payload.publication_timestamp > ingested_at:
         raise DataConflictError("publication_timestamp cannot be in the future")
     existing = session.scalar(
         _observation_statement().where(
@@ -311,7 +332,7 @@ def _write_observation(
                 message="Duplicate observation requires an explicit revision reason",
             )
             raise DataConflictError("Observation already exists; revision_reason is required")
-        previous_value, previous_status, _, _, _, sequence = _effective_state(existing)
+        previous_value, previous_status, _, _, _, sequence, *_ = _effective_state(existing)
         revision = models.DataRevision(
             observation=existing,
             import_batch_id=import_batch_id,
@@ -322,6 +343,9 @@ def _write_observation(
             revised_status=payload.status,
             publication_timestamp=payload.publication_timestamp,
             revision_timestamp=ingested_at,
+            provider_vintage_start=payload.provider_vintage_start,
+            provider_vintage_end=payload.provider_vintage_end,
+            provider_metadata=payload.provider_metadata,
             reason=payload.revision_reason,
             source_reference=payload.source_reference,
         )
@@ -343,6 +367,9 @@ def _write_observation(
         observed_at=payload.observed_at,
         publication_timestamp=payload.publication_timestamp,
         ingestion_timestamp=ingested_at,
+        provider_vintage_start=payload.provider_vintage_start,
+        provider_vintage_end=payload.provider_vintage_end,
+        provider_metadata=payload.provider_metadata,
         value=payload.value,
         status=payload.status,
         source_reference=payload.source_reference,

@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from macrovision.integrity import IntegrityConflictError
+from macrovision.provider_contracts import ProviderError
 
 
 def _code(status_code: int) -> str:
@@ -61,6 +62,21 @@ async def integrity_error_handler(_: Request, exc: Exception) -> JSONResponse:
         status_code=409,
         content={
             "code": "conflict",
+            "message": message,
+            "details": None,
+            "detail": message,
+        },
+    )
+
+
+async def provider_error_handler(_: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, ProviderError):
+        raise exc
+    message = str(exc)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": exc.code.value,
             "message": message,
             "details": None,
             "detail": message,
