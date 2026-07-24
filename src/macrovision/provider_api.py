@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from macrovision.config import get_settings
 from macrovision.contracts import ErrorResponse
 from macrovision.database import get_db
-from macrovision.fred_provider import FREDProvider
 from macrovision.macro_data_services import DataConflictError
 from macrovision.provider_contracts import ExternalDataProvider
+from macrovision.provider_registry import get_provider_registry
 from macrovision.provider_schemas import FREDSeriesSyncRequest, ProviderSyncResult
 from macrovision.provider_services import synchronize_provider_series
 
@@ -19,11 +19,13 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_fred_provider() -> Generator[ExternalDataProvider, None, None]:
-    provider = FREDProvider(get_settings())
+    provider = get_provider_registry().create("fred", get_settings())
     try:
         yield provider
     finally:
-        provider.close()
+        close = getattr(provider, "close", None)
+        if callable(close):
+            close()
 
 
 FredProvider = Annotated[ExternalDataProvider, Depends(get_fred_provider)]

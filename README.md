@@ -250,6 +250,11 @@ trusted private network and must not be exposed directly to the public internet.
 
 ## External providers and FRED workflow (v0.5)
 
+MacroVision v0.6 scheduler persistence is under development on the
+`feat/scheduled-provider-sync-v0.6` feature branch. Phase 1 defines only the provider
+registry, safe schedule/run persistence contracts, and deterministic UTC cadence
+calculations. No scheduler worker or scheduler API is available yet.
+
 External providers implement a shared contract for identity, metadata retrieval,
 observation retrieval, normalization, connectivity checks, and controlled errors. The
 Macro Data Engine consumes normalized provider records and has no dependency on FRED

@@ -43,6 +43,7 @@ def test_alembic_schema_has_stabilization_constraints(migrated_engine: Engine) -
     }
     assert "data_import_errors" in schema.get_table_names()
     assert "data_quality_issue_events" in schema.get_table_names()
+    assert {"provider_sync_schedules", "provider_sync_runs"} <= set(schema.get_table_names())
     assert {"provider_vintage_start", "provider_vintage_end", "provider_metadata"} <= {
         column["name"] for column in schema.get_columns("data_observations")
     }
@@ -218,6 +219,73 @@ def test_provider_schema_compiles_for_postgresql_with_expected_constraints() -> 
     assert "ck_series_provider_id_nonempty" in migration_source
 
 
+def test_scheduler_migration_downgrade_and_reupgrade_with_seeded_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'scheduler-cycle.db'}"
+    monkeypatch.setenv("MACROVISION_DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = Config("alembic.ini")
+    command.upgrade(config, "head")
+    engine = create_database_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO provider_sync_schedules "
+                "(id,provider,provider_series_id,request_config,request_config_fingerprint,"
+                "cadence_type,interval_minutes,next_run_at,enabled,lock_version) VALUES "
+                "(1,'fred','GDP','{}',:fingerprint,'fixed_interval',60,"
+                "'2026-07-25 13:00:00',1,1)"
+            ),
+            {"fingerprint": "a" * 64},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO provider_sync_runs "
+                "(id,schedule_id,run_key,trigger_type,provider,provider_series_id,"
+                "concurrency_key,request_snapshot,request_snapshot_fingerprint,status,"
+                "scheduled_for,started_at,completed_at,attempt_number,maximum_attempts,"
+                "lease_generation,sync_idempotency_key,observations_received,"
+                "observations_accepted,observations_revised,observations_missing,"
+                "observations_rejected,error_code,error_message) VALUES "
+                "(1,1,:run_key,'scheduled','fred','GDP',:concurrency_key,'{}',"
+                ":fingerprint,'failed','2026-07-25 12:00:00','2026-07-25 12:00:00',"
+                "'2026-07-25 12:01:00',1,2,1,:sync_key,0,0,0,0,0,"
+                "'safe_failure','Sanitized failure')"
+            ),
+            {
+                "run_key": "b" * 64,
+                "concurrency_key": "c" * 64,
+                "fingerprint": "a" * 64,
+                "sync_key": f"scheduler:{'d' * 64}",
+            },
+        )
+        connection.execute(
+            text(
+                "INSERT INTO data_sources (id,code,name,description) "
+                "VALUES (1,'SAFE','Unaffected source','Must survive scheduler downgrade')"
+            )
+        )
+    engine.dispose()
+
+    command.downgrade(config, "20260724_0007")
+    engine = create_database_engine(database_url)
+    with engine.connect() as connection:
+        assert "provider_sync_schedules" not in inspect(connection).get_table_names()
+        assert connection.scalar(text("SELECT COUNT(*) FROM data_sources")) == 1
+    engine.dispose()
+
+    command.upgrade(config, "head")
+    engine = create_database_engine(database_url)
+    with engine.connect() as connection:
+        assert {"provider_sync_schedules", "provider_sync_runs"} <= set(
+            inspect(connection).get_table_names()
+        )
+        assert connection.scalar(text("SELECT COUNT(*) FROM data_sources")) == 1
+    engine.dispose()
+    get_settings.cache_clear()
+
+
 def test_provider_provenance_downgrade_and_reupgrade_preserves_observation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -284,6 +352,7 @@ def test_provider_provenance_downgrade_and_reupgrade_preserves_observation(
         "20260724_0004",
         "20260724_0005",
         "20260724_0006",
+        "20260724_0007",
     ],
 )
 def test_each_legacy_schema_upgrades_to_head(
@@ -300,7 +369,7 @@ def test_each_legacy_schema_upgrades_to_head(
     engine = create_database_engine(database_url)
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "20260724_0007"
+            "20260724_0008"
         )
     engine.dispose()
     get_settings.cache_clear()
