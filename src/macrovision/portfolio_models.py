@@ -4,7 +4,6 @@ from enum import StrEnum
 
 from sqlalchemy import (
     CheckConstraint,
-    DateTime,
     Enum,
     ForeignKey,
     Index,
@@ -18,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from macrovision.database import Base
-from macrovision.persistence_types import ScaledDecimal
+from macrovision.persistence_types import ScaledDecimal, UTCDateTime
 
 MONEY_PRECISION = 28
 MONEY_SCALE = 8
@@ -49,7 +48,7 @@ class Portfolio(Base):
     name: Mapped[str] = mapped_column(String(120), index=True)
     base_currency: Mapped[str] = mapped_column(String(3))
     lock_version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
 
     positions: Mapped[list["PortfolioPosition"]] = relationship(
         back_populates="portfolio", cascade="all, delete-orphan"
@@ -84,7 +83,7 @@ class PortfolioPosition(Base):
     current_price: Mapped[Decimal] = mapped_column(MoneyValue)
     realized_pl: Mapped[Decimal] = mapped_column(MoneyValue, default=Decimal("0"))
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), server_default=func.now(), onupdate=func.now()
     )
 
     portfolio: Mapped[Portfolio] = relationship(back_populates="positions")
@@ -105,7 +104,7 @@ class CashBalance(Base):
     currency: Mapped[str] = mapped_column(String(3))
     balance: Mapped[Decimal] = mapped_column(MoneyValue, default=Decimal("0"))
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), server_default=func.now(), onupdate=func.now()
     )
 
     portfolio: Mapped[Portfolio] = relationship(back_populates="cash_balances")
@@ -130,8 +129,8 @@ class PortfolioTransaction(Base):
     currency: Mapped[str] = mapped_column(String(3))
     realized_pl: Mapped[Decimal] = mapped_column(MoneyValue, default=Decimal("0"))
     note: Mapped[str] = mapped_column(Text, default="")
-    occurred_at: Mapped[datetime] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    occurred_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
 
     portfolio: Mapped[Portfolio] = relationship(back_populates="transactions")
 
@@ -153,7 +152,7 @@ class PortfolioSnapshot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     portfolio_id: Mapped[int] = mapped_column(ForeignKey("portfolios.id", ondelete="RESTRICT"))
-    captured_at: Mapped[datetime] = mapped_column(DateTime)
+    captured_at: Mapped[datetime] = mapped_column(UTCDateTime())
     total_value: Mapped[Decimal] = mapped_column(MoneyValue)
     position_value: Mapped[Decimal] = mapped_column(MoneyValue)
     base_cash_balance: Mapped[Decimal] = mapped_column(MoneyValue)
@@ -162,7 +161,7 @@ class PortfolioSnapshot(Base):
     unrealized_pl: Mapped[Decimal] = mapped_column(MoneyValue)
     allocations_json: Mapped[str] = mapped_column(Text)
     cash_balances_json: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
 
     portfolio: Mapped[Portfolio] = relationship(back_populates="snapshots")
 

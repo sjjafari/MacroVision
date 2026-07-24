@@ -1,6 +1,6 @@
 # MacroVision
 
-MacroVision is an Investment Decision Intelligence Platform. Version 0.4.1 provides a
+MacroVision is an Investment Decision Intelligence Platform. Version 0.4.2 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
 decision cases, plus immutable-vintage macroeconomic and market-data storage. It is not
@@ -34,6 +34,10 @@ Decision rules       src/macrovision/decision_services.py
 Decision contracts   src/macrovision/decision_schemas.py
 Decision storage     src/macrovision/decision_models.py
 Exact value types    src/macrovision/persistence_types.py
+Shared contracts     src/macrovision/contracts.py, errors.py
+Macro Data API       src/macrovision/macro_data_api.py
+Macro Data services  src/macrovision/macro_data_services.py
+Macro Data storage   src/macrovision/macro_data_models.py
 Schema history       migrations/
 Configuration        src/macrovision/config.py
 ```
@@ -236,5 +240,36 @@ trading recommendations, authentication, brokers, and FX conversion.
 Import request limits are configurable through `MACROVISION_MAX_IMPORT_ROWS`,
 `MACROVISION_MAX_IMPORT_NOTES_LENGTH`, and
 `MACROVISION_MAX_IMPORT_ERROR_MESSAGE_LENGTH`; `.env.example` contains safe local
-defaults. MacroVision v0.4.1 has no authentication. Any deployment must remain on a
+defaults. MacroVision v0.4.2 has no authentication. Any deployment must remain on a
 trusted private network and must not be exposed directly to the public internet.
+
+## Data contracts (v0.4.2)
+
+All public timestamps must contain an explicit UTC offset. Positive, negative, and
+daylight-saving offsets are normalized to UTC and responses always serialize an explicit
+UTC offset. Legacy naive database timestamps are interpreted as UTC by migration
+`20260724_0006`. SQLite stores normalized naive UTC internally; PostgreSQL uses
+`TIMESTAMPTZ`.
+
+Legacy bounded ratios—including liquidity need, risk limits, journal probability, and
+confidence—use exact signed integers scaled to six decimal places. API JSON represents
+these values as fixed six-decimal strings. Portfolio money precision remains eight
+decimals and Macro Data values remain eight decimals.
+
+Expected `404`, `409`, and `422` responses use a shared contract with `code`, safe
+`message`, optional bounded `details`, and a compatibility `detail` field. List endpoints
+accept `limit` (default 100, maximum 200) and `offset` (default 0), retain their existing
+array response bodies, and use deterministic ID tie-breaking.
+
+Quality-issue listing and retrieval are read-only. Run stale detection explicitly with
+`POST /api/v1/data-quality/scans/stale`; repeated scans do not create duplicate open
+issues. Read immutable acknowledgement and resolution history from
+`GET /api/v1/data-quality/issues/{issue_id}/history`.
+
+The GitHub Actions workflow runs Ruff, mypy, pytest, SQLite migration-backed tests, and a
+PostgreSQL 16 migration cycle. For local PostgreSQL work, install the `postgres` optional
+dependency and set `MACROVISION_DATABASE_URL`, for example:
+
+```text
+postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
+```

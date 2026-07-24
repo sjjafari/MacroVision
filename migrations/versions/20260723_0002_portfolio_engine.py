@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM
 
 revision: str = "20260723_0002"
 down_revision: str | None = "20260723_0001"
@@ -12,6 +13,14 @@ depends_on: str | Sequence[str] | None = None
 
 MONEY = sa.BigInteger()
 QUANTITY = sa.BigInteger()
+
+
+def _drop_owned_postgresql_enums(*names: str) -> None:
+    bind = op.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    for name in names:
+        ENUM(name=name).drop(bind, checkfirst=True)
 
 
 def upgrade() -> None:
@@ -158,3 +167,4 @@ def downgrade() -> None:
     op.drop_index("ix_portfolios_name", table_name="portfolios")
     op.drop_index("ix_portfolios_investor_id", table_name="portfolios")
     op.drop_table("portfolios")
+    _drop_owned_postgresql_enums("transactiontype")

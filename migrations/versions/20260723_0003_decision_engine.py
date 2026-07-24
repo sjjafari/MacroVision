@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM
 
 revision: str = "20260723_0003"
 down_revision: str | None = "20260723_0002"
@@ -11,6 +12,14 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 SCORE_MAX = 1_000_000
+
+
+def _drop_owned_postgresql_enums(*names: str) -> None:
+    bind = op.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    for name in names:
+        ENUM(name=name).drop(bind, checkfirst=True)
 
 
 def _score_constraints(prefix: str) -> tuple[sa.CheckConstraint, sa.CheckConstraint]:
@@ -259,3 +268,8 @@ def downgrade() -> None:
     op.drop_index("ix_decision_status_updated", table_name="decision_cases")
     op.drop_index("ix_decision_cases_title", table_name="decision_cases")
     op.drop_table("decision_cases")
+    _drop_owned_postgresql_enums(
+        "revisionevent",
+        "evidencesourcetype",
+        "decisionstatus",
+    )

@@ -44,8 +44,11 @@ def get_decision(session: Session, decision_id: int) -> models.DecisionCase:
     return decision
 
 
-def list_decisions(session: Session) -> list[models.DecisionCase]:
-    return list(session.scalars(_decision_statement().order_by(models.DecisionCase.id)).unique())
+def list_decisions(
+    session: Session, *, limit: int = 100, offset: int = 0
+) -> list[models.DecisionCase]:
+    statement = _decision_statement().order_by(models.DecisionCase.id).limit(limit).offset(offset)
+    return list(session.scalars(statement).unique())
 
 
 def _append_revision(
@@ -279,12 +282,16 @@ def close_decision(
     return get_decision(session, decision_id)
 
 
-def list_history(session: Session, decision_id: int) -> list[models.DecisionRevision]:
+def list_history(
+    session: Session, decision_id: int, *, limit: int = 100, offset: int = 0
+) -> list[models.DecisionRevision]:
     get_decision(session, decision_id)
     statement = (
         select(models.DecisionRevision)
         .where(models.DecisionRevision.decision_id == decision_id)
-        .order_by(models.DecisionRevision.version)
+        .order_by(models.DecisionRevision.version, models.DecisionRevision.id)
+        .limit(limit)
+        .offset(offset)
     )
     return list(session.scalars(statement))
 

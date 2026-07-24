@@ -17,6 +17,7 @@ from sqlalchemy import (
     event,
     func,
     inspect,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 from sqlalchemy.orm.state import InstanceState
@@ -331,11 +332,22 @@ class DataQualityIssue(Base):
 
     series: Mapped[DataSeries] = relationship(back_populates="quality_issues")
     observation: Mapped[DataObservation | None] = relationship(back_populates="quality_issues")
+    events: Mapped[list["DataQualityIssueEvent"]] = relationship(
+        back_populates="issue",
+        order_by="DataQualityIssueEvent.event_timestamp, DataQualityIssueEvent.id",
+    )
 
     __table_args__ = (
         CheckConstraint("lock_version > 0", name="ck_quality_lock_version"),
         Index("ix_quality_status_detected", "status", "detected_at"),
         Index("ix_quality_series_type", "series_id", "issue_type"),
+        Index(
+            "uq_open_stale_issue_per_series",
+            "series_id",
+            unique=True,
+            sqlite_where=text("issue_type = 'stale_series' AND status != 'resolved'"),
+            postgresql_where=text("issue_type = 'stale_series' AND status != 'resolved'"),
+        ),
     )
     __mapper_args__ = {  # noqa: RUF012
         "version_id_col": lock_version,
@@ -343,7 +355,29 @@ class DataQualityIssue(Base):
     }
 
 
-ImmutableDataRecord = DataObservation | DataRevision | DataImportBatch | DataImportError
+class DataQualityIssueEvent(Base):
+    __tablename__ = "data_quality_issue_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    issue_id: Mapped[int] = mapped_column(ForeignKey("data_quality_issues.id", ondelete="RESTRICT"))
+    previous_status: Mapped[QualityIssueStatus] = mapped_column(Enum(QualityIssueStatus))
+    new_status: Mapped[QualityIssueStatus] = mapped_column(Enum(QualityIssueStatus))
+    event_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
+    note: Mapped[str] = mapped_column(String(1000), default="")
+    actor_reference: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    source_lock_version: Mapped[int] = mapped_column(Integer)
+
+    issue: Mapped[DataQualityIssue] = relationship(back_populates="events")
+
+    __table_args__ = (
+        CheckConstraint("source_lock_version > 0", name="ck_quality_event_lock_version"),
+        Index("ix_quality_event_issue_time", "issue_id", "event_timestamp", "id"),
+    )
+
+
+ImmutableDataRecord = (
+    DataObservation | DataRevision | DataImportBatch | DataImportError | DataQualityIssueEvent
+)
 
 
 def _prevent_immutable_change(
@@ -360,11 +394,16 @@ def _prevent_immutable_change(
     raise ValueError("Macro data observation, revision, and import history is immutable")
 
 
+def _prevent_immutable_delete(_mapper: object, _connection: object, _target: object) -> None:
+    raise ValueError("Macro data observation, revision, and import history is immutable")
+
+
 for immutable_model in (
     DataObservation,
     DataRevision,
     DataImportBatch,
     DataImportError,
+    DataQualityIssueEvent,
 ):
     event.listen(immutable_model, "before_update", _prevent_immutable_change)
-    event.listen(immutable_model, "before_delete", _prevent_immutable_change)
+    event.listen(immutable_model, "before_delete", _prevent_immutable_delete)
