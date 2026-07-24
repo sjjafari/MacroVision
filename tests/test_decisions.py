@@ -530,6 +530,7 @@ def test_all_audit_entities_reject_orm_deletion(client: TestClient, db_session: 
     )
     assert response.status_code == 200
     decision = decision_services.get_decision(db_session, decision_id)
+    assert decision.outcome is not None
     identifiers: list[tuple[type[Any], int]] = [
         (decision_models.DecisionHypothesis, decision.hypotheses[0].id),
         (decision_models.SupportingEvidence, decision.supporting_evidence[0].id),
