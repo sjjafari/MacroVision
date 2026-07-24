@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from macrovision import portfolio_schemas as schemas
 from macrovision import portfolio_services as services
 from macrovision.database import get_db
+from macrovision.integrity import IntegrityConflictError
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -52,7 +53,11 @@ def record_transaction(
         return schemas.TransactionRead.model_validate(
             services.record_transaction(session, portfolio_id, payload)
         )
-    except (services.PortfolioNotFoundError, services.PortfolioDomainError) as exc:
+    except (
+        services.PortfolioNotFoundError,
+        services.PortfolioDomainError,
+        IntegrityConflictError,
+    ) as exc:
         raise _http_error(exc) from exc
 
 
@@ -63,7 +68,7 @@ def list_transactions(portfolio_id: int, session: DbSession) -> list[schemas.Tra
             schemas.TransactionRead.model_validate(transaction)
             for transaction in services.list_transactions(session, portfolio_id)
         ]
-    except services.PortfolioNotFoundError as exc:
+    except (services.PortfolioNotFoundError, IntegrityConflictError) as exc:
         raise _http_error(exc) from exc
 
 

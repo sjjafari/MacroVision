@@ -6,9 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, inspect, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from macrovision import portfolio_models, portfolio_schemas, portfolio_services
+from macrovision.integrity import IntegrityConflictError
 
 
 class PortfolioJson(TypedDict):
@@ -41,6 +42,32 @@ def record(
     return cast(dict[str, Any], response.json())
 
 
+def _service_transaction(
+    session: Session,
+    portfolio_id: int,
+    transaction_type: str,
+    **fields: object,
+) -> portfolio_models.PortfolioTransaction:
+    return portfolio_services.record_transaction(
+        session,
+        portfolio_id,
+        portfolio_schemas.TransactionCreate(
+            transaction_type=transaction_type,
+            currency="USD",
+            **fields,
+        ),
+    )
+
+
+def _competing_sessions(db_session: Session) -> tuple[Session, Session]:
+    factory = sessionmaker(
+        bind=db_session.get_bind(),
+        autoflush=False,
+        expire_on_commit=False,
+    )
+    return factory(), factory()
+
+
 def test_create_list_and_retrieve_portfolios(client: TestClient) -> None:
     first = create_portfolio(client)
     second = create_portfolio(client, "Opportunity Portfolio")
@@ -62,6 +89,179 @@ def test_create_list_and_retrieve_portfolios(client: TestClient) -> None:
         json={"name": "Invalid owner", "base_currency": "USD", "investor_id": 999},
     )
     assert missing_investor.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("setup", "winner", "loser", "expected_cash", "expected_quantity"),
+    [
+        (
+            [("deposit", {"amount": Decimal("100")})],
+            ("withdrawal", {"amount": Decimal("80")}),
+            ("withdrawal", {"amount": Decimal("80")}),
+            Decimal("20"),
+            None,
+        ),
+        (
+            [("deposit", {"amount": Decimal("200")})],
+            (
+                "buy",
+                {
+                    "symbol": "MV",
+                    "asset_name": "MacroVision",
+                    "quantity": Decimal("1"),
+                    "unit_price": Decimal("150"),
+                },
+            ),
+            (
+                "buy",
+                {
+                    "symbol": "MV",
+                    "asset_name": "MacroVision",
+                    "quantity": Decimal("1"),
+                    "unit_price": Decimal("100"),
+                },
+            ),
+            Decimal("50"),
+            Decimal("1"),
+        ),
+        (
+            [
+                ("deposit", {"amount": Decimal("1000")}),
+                (
+                    "buy",
+                    {
+                        "symbol": "MV",
+                        "asset_name": "MacroVision",
+                        "quantity": Decimal("10"),
+                        "unit_price": Decimal("10"),
+                    },
+                ),
+            ],
+            (
+                "sell",
+                {
+                    "symbol": "MV",
+                    "quantity": Decimal("4"),
+                    "unit_price": Decimal("20"),
+                },
+            ),
+            (
+                "sell",
+                {
+                    "symbol": "MV",
+                    "quantity": Decimal("7"),
+                    "unit_price": Decimal("20"),
+                },
+            ),
+            Decimal("980"),
+            Decimal("6"),
+        ),
+    ],
+)
+def test_competing_financial_mutations_are_atomic(
+    db_session: Session,
+    setup: list[tuple[str, dict[str, object]]],
+    winner: tuple[str, dict[str, object]],
+    loser: tuple[str, dict[str, object]],
+    expected_cash: Decimal,
+    expected_quantity: Decimal | None,
+) -> None:
+    portfolio = portfolio_services.create_portfolio(
+        db_session,
+        portfolio_schemas.PortfolioCreate(name="Concurrent", base_currency="USD"),
+    )
+    for transaction_type, fields in setup:
+        _service_transaction(db_session, portfolio.id, transaction_type, **fields)
+
+    stale_session, winner_session = _competing_sessions(db_session)
+    try:
+        stale_portfolio = portfolio_services.get_portfolio(stale_session, portfolio.id)
+        starting_version = stale_portfolio.lock_version
+        _service_transaction(winner_session, portfolio.id, winner[0], **winner[1])
+
+        with pytest.raises(IntegrityConflictError, match="concurrently"):
+            _service_transaction(stale_session, portfolio.id, loser[0], **loser[1])
+
+        db_session.expire_all()
+        current = portfolio_services.get_portfolio(db_session, portfolio.id)
+        assert current.lock_version == starting_version + 1
+        assert current.cash_balances[0].balance == expected_cash
+        if expected_quantity is not None:
+            assert current.positions[0].quantity == expected_quantity
+        assert len(current.transactions) == len(setup) + 1
+        cash_from_history = sum(
+            (
+                transaction.amount
+                if transaction.transaction_type
+                in {
+                    portfolio_models.TransactionType.deposit,
+                    portfolio_models.TransactionType.sell,
+                    portfolio_models.TransactionType.dividend,
+                    portfolio_models.TransactionType.interest,
+                }
+                else -transaction.amount
+                for transaction in current.transactions
+            ),
+            Decimal("0"),
+        )
+        assert cash_from_history == current.cash_balances[0].balance
+        if expected_quantity is not None:
+            quantity_from_history = sum(
+                (
+                    transaction.quantity
+                    if transaction.transaction_type == portfolio_models.TransactionType.buy
+                    else -transaction.quantity
+                    for transaction in current.transactions
+                    if transaction.transaction_type
+                    in {
+                        portfolio_models.TransactionType.buy,
+                        portfolio_models.TransactionType.sell,
+                    }
+                    and transaction.quantity is not None
+                ),
+                Decimal("0"),
+            )
+            assert quantity_from_history == current.positions[0].quantity
+    finally:
+        stale_session.close()
+        winner_session.close()
+
+
+def test_competing_price_updates_preserve_winner_and_version(db_session: Session) -> None:
+    portfolio = portfolio_services.create_portfolio(
+        db_session,
+        portfolio_schemas.PortfolioCreate(name="Concurrent valuation"),
+    )
+    _service_transaction(db_session, portfolio.id, "deposit", amount=Decimal("100"))
+    _service_transaction(
+        db_session,
+        portfolio.id,
+        "buy",
+        symbol="MV",
+        asset_name="MacroVision",
+        quantity=Decimal("1"),
+        unit_price=Decimal("50"),
+    )
+    position_id = portfolio_services.get_portfolio(db_session, portfolio.id).positions[0].id
+    stale_session, winner_session = _competing_sessions(db_session)
+    try:
+        stale = portfolio_services.get_portfolio(stale_session, portfolio.id)
+        starting_version = stale.lock_version
+        portfolio_services.update_position_price(
+            winner_session, portfolio.id, position_id, Decimal("60")
+        )
+        with pytest.raises(IntegrityConflictError, match="concurrently"):
+            portfolio_services.update_position_price(
+                stale_session, portfolio.id, position_id, Decimal("70")
+            )
+        db_session.expire_all()
+        current = portfolio_services.get_portfolio(db_session, portfolio.id)
+        assert current.lock_version == starting_version + 1
+        assert current.positions[0].current_price == Decimal("60")
+        assert len(current.transactions) == 2
+    finally:
+        stale_session.close()
+        winner_session.close()
 
 
 def test_buy_weighted_cost_price_update_and_summary(client: TestClient) -> None:

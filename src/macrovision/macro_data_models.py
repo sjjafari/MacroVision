@@ -169,6 +169,8 @@ class DataImportBatch(Base):
     idempotency_key: Mapped[str] = mapped_column(String(160), unique=True)
     request_fingerprint: Mapped[str] = mapped_column(String(64))
     imported_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    failed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    failure_summary: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[ImportStatus] = mapped_column(Enum(ImportStatus))
     row_count: Mapped[int]
     accepted_rows: Mapped[int]
@@ -183,13 +185,45 @@ class DataImportBatch(Base):
     revisions: Mapped[list["DataRevision"]] = relationship(
         back_populates="import_batch", cascade="save-update, merge", passive_deletes="all"
     )
+    errors: Mapped[list["DataImportError"]] = relationship(
+        back_populates="import_batch",
+        cascade="save-update, merge",
+        passive_deletes="all",
+        order_by="DataImportError.row_index, DataImportError.id",
+    )
 
     __table_args__ = (
         CheckConstraint("row_count >= 0", name="ck_import_row_count"),
         CheckConstraint("accepted_rows >= 0", name="ck_import_accepted"),
         CheckConstraint("rejected_rows >= 0", name="ck_import_rejected"),
         CheckConstraint("accepted_rows + rejected_rows = row_count", name="ck_import_count_total"),
+        CheckConstraint(
+            "(status = 'failed' AND failed_at IS NOT NULL AND failure_summary IS NOT NULL) OR "
+            "(status != 'failed' AND failed_at IS NULL AND failure_summary IS NULL)",
+            name="ck_import_failure_details",
+        ),
         Index("ix_import_source_imported", "source_id", "imported_at"),
+    )
+
+
+class DataImportError(Base):
+    __tablename__ = "data_import_errors"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    import_batch_id: Mapped[int] = mapped_column(
+        ForeignKey("data_import_batches.id", ondelete="RESTRICT")
+    )
+    row_index: Mapped[int]
+    error_code: Mapped[str] = mapped_column(String(64))
+    message: Mapped[str] = mapped_column(String(500))
+    source_context: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
+
+    import_batch: Mapped[DataImportBatch] = relationship(back_populates="errors")
+
+    __table_args__ = (
+        CheckConstraint("row_index >= 0", name="ck_import_error_row_index"),
+        Index("ix_import_error_batch_row", "import_batch_id", "row_index"),
     )
 
 
@@ -309,7 +343,7 @@ class DataQualityIssue(Base):
     }
 
 
-ImmutableDataRecord = DataObservation | DataRevision | DataImportBatch
+ImmutableDataRecord = DataObservation | DataRevision | DataImportBatch | DataImportError
 
 
 def _prevent_immutable_change(
@@ -326,6 +360,11 @@ def _prevent_immutable_change(
     raise ValueError("Macro data observation, revision, and import history is immutable")
 
 
-for immutable_model in (DataObservation, DataRevision, DataImportBatch):
+for immutable_model in (
+    DataObservation,
+    DataRevision,
+    DataImportBatch,
+    DataImportError,
+):
     event.listen(immutable_model, "before_update", _prevent_immutable_change)
     event.listen(immutable_model, "before_delete", _prevent_immutable_change)

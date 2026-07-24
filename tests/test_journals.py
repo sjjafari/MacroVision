@@ -1,5 +1,8 @@
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
+from macrovision import models
 from tests.test_investors import investor_payload
 
 
@@ -24,6 +27,7 @@ def test_journal_requires_evidence_and_supports_documented_learning(
     created = client.post("/api/v1/journals", json=journal_payload)
     assert created.status_code == 201
     assert created.json()["outcome"] is None
+    assert created.json()["status"] == "draft"
 
     journal_id = created.json()["id"]
     closed = client.post(
@@ -35,11 +39,56 @@ def test_journal_requires_evidence_and_supports_documented_learning(
     )
     assert closed.status_code == 200
     assert closed.json()["status"] == "closed"
+    assert closed.json()["closed_at"] is not None
     assert closed.json()["lessons"].startswith("Define deployment")
 
     fetched = client.get(f"/api/v1/journals/{journal_id}")
     assert fetched.status_code == 200
     assert fetched.json()["outcome"] == closed.json()["outcome"]
+
+    repeated = client.post(
+        f"/api/v1/journals/{journal_id}/close",
+        json={"outcome": "Overwrite", "lessons": "Overwrite"},
+    )
+    assert repeated.status_code == 409
+    unchanged = client.get(f"/api/v1/journals/{journal_id}").json()
+    assert unchanged["outcome"] == closed.json()["outcome"]
+    assert unchanged["lessons"] == closed.json()["lessons"]
+
+
+def test_closed_journal_rejects_direct_orm_mutation(
+    client: TestClient, db_session: Session
+) -> None:
+    investor = client.post("/api/v1/investors", json=investor_payload()).json()
+    payload = {
+        "investor_id": investor["id"],
+        "asset": "Cash",
+        "hypothesis": "Preserve optionality.",
+        "evidence_for": "Liquidity.",
+        "evidence_against": "Inflation.",
+        "critic_review": "Review real yields.",
+        "probability": 0.6,
+        "confidence": 0.5,
+        "invalidation_conditions": "Real yields fall.",
+    }
+    journal = client.post("/api/v1/journals", json=payload).json()
+    client.post(
+        f"/api/v1/journals/{journal['id']}/close",
+        json={"outcome": "Preserved", "lessons": "Document triggers"},
+    )
+    record = db_session.get(models.ResearchJournal, journal["id"])
+    assert record is not None
+    record.outcome = "Attempted overwrite"
+    with pytest.raises(ValueError, match="immutable"):
+        db_session.commit()
+    db_session.rollback()
+
+
+def test_legacy_journal_routes_are_deprecated(client: TestClient) -> None:
+    paths = client.get("/openapi.json").json()["paths"]
+    assert paths["/api/v1/journals"]["post"]["deprecated"] is True
+    assert paths["/api/v1/journals/{journal_id}"]["get"]["deprecated"] is True
+    assert paths["/api/v1/journals/{journal_id}/close"]["post"]["deprecated"] is True
 
 
 def test_journal_rejects_certainty_above_probability_range(client: TestClient) -> None:

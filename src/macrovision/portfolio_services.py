@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from macrovision import models as core_models
 from macrovision import portfolio_models as models
 from macrovision import portfolio_schemas as schemas
+from macrovision.integrity import IntegrityConflictError, commit_or_conflict
 
 ZERO = Decimal("0")
 PERCENT = Decimal("100")
@@ -47,6 +48,17 @@ class PortfolioDomainError(Exception):
     pass
 
 
+def _mark_mutated(portfolio: models.Portfolio) -> None:
+    portfolio.lock_version += 1
+
+
+def _verify_accounting_invariants(portfolio: models.Portfolio) -> None:
+    if any(balance.balance < ZERO for balance in portfolio.cash_balances):
+        raise PortfolioDomainError("Portfolio cash balance cannot be negative")
+    if any(position.quantity <= ZERO for position in portfolio.positions):
+        raise PortfolioDomainError("Portfolio position quantity must remain positive")
+
+
 def _portfolio_statement() -> Select[tuple[models.Portfolio]]:
     return select(models.Portfolio).options(
         selectinload(models.Portfolio.positions),
@@ -67,7 +79,7 @@ def create_portfolio(session: Session, payload: schemas.PortfolioCreate) -> mode
         base_currency=payload.base_currency.upper(),
     )
     session.add(portfolio)
-    session.commit()
+    commit_or_conflict(session, "Portfolio creation conflicted with existing data")
     return get_portfolio(session, portfolio.id)
 
 
@@ -224,11 +236,16 @@ def record_transaction(
             note=payload.note,
             occurred_at=_utc_naive(payload.occurred_at),
         )
+        _mark_mutated(portfolio)
+        _verify_accounting_invariants(portfolio)
         session.add(transaction)
-        session.commit()
+        commit_or_conflict(
+            session,
+            "Portfolio changed concurrently; reload and retry the transaction",
+        )
         session.refresh(transaction)
         return transaction
-    except Exception:
+    except (PortfolioDomainError, IntegrityConflictError):
         session.rollback()
         raise
 
@@ -251,7 +268,12 @@ def update_position_price(
     if position is None:
         raise PortfolioNotFoundError("Position not found")
     position.current_price = current_price
-    session.commit()
+    _mark_mutated(portfolio)
+    _verify_accounting_invariants(portfolio)
+    commit_or_conflict(
+        session,
+        "Portfolio changed concurrently; reload and retry the price update",
+    )
     return get_portfolio(session, portfolio_id)
 
 
@@ -347,6 +369,7 @@ def portfolio_to_read(portfolio: models.Portfolio) -> schemas.PortfolioRead:
         investor_id=portfolio.investor_id,
         name=portfolio.name,
         base_currency=portfolio.base_currency,
+        lock_version=portfolio.lock_version,
         created_at=portfolio.created_at,
         positions=positions,
         cash_balances=[

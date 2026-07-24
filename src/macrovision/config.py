@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "sqlite:///./macrovision.db"
     log_level: str = "INFO"
+    max_import_rows: int = 1000
+    max_import_notes_length: int = 2000
+    max_import_error_message_length: int = 500
 
     model_config = SettingsConfigDict(
         env_file=".env",

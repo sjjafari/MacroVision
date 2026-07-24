@@ -1,10 +1,17 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from macrovision import models, schemas
+from macrovision.integrity import commit_or_conflict
 
 
 class NotFoundError(Exception):
+    pass
+
+
+class JournalConflictError(Exception):
     pass
 
 
@@ -29,7 +36,7 @@ def create_investor_profile(
         ),
     )
     session.add(profile)
-    session.commit()
+    commit_or_conflict(session, "Investor profile creation conflicted")
     return get_investor_profile(session, profile.id)
 
 
@@ -51,9 +58,13 @@ def get_investor_profile(session: Session, profile_id: int) -> models.InvestorPr
 
 def create_journal(session: Session, payload: schemas.JournalCreate) -> models.ResearchJournal:
     get_investor_profile(session, payload.investor_id)
-    journal = models.ResearchJournal(**payload.model_dump())
+    journal = models.ResearchJournal(
+        **payload.model_dump(),
+        status=models.JournalStatus.draft,
+        lock_version=1,
+    )
     session.add(journal)
-    session.commit()
+    commit_or_conflict(session, "Research journal creation conflicted")
     session.refresh(journal)
     return journal
 
@@ -69,9 +80,21 @@ def close_journal(
     session: Session, journal_id: int, payload: schemas.JournalClose
 ) -> models.ResearchJournal:
     journal = get_journal(session, journal_id)
+    if (
+        journal.status in {models.JournalStatus.closed, models.JournalStatus.invalidated}
+        or journal.outcome is not None
+        or journal.lessons is not None
+        or journal.closed_at is not None
+    ):
+        raise JournalConflictError("Research journal is already terminal or closed")
     journal.outcome = payload.outcome
     journal.lessons = payload.lessons
     journal.status = models.JournalStatus.closed
-    session.commit()
+    journal.closed_at = datetime.now(UTC).replace(tzinfo=None)
+    journal.lock_version += 1
+    commit_or_conflict(
+        session,
+        "Research journal changed concurrently; reload and retry",
+    )
     session.refresh(journal)
     return journal

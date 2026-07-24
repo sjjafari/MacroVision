@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from macrovision.config import get_settings
 from macrovision.macro_data_models import (
     DataFrequency,
     ImportStatus,
@@ -191,18 +192,41 @@ class DataImportCreate(BaseModel):
     notes: str = ""
     rows: list[ImportRow] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def validate_import_limits(self) -> "DataImportCreate":
+        settings = get_settings()
+        if len(self.rows) > settings.max_import_rows:
+            raise ValueError(f"Import cannot exceed {settings.max_import_rows} rows")
+        if len(self.notes) > settings.max_import_notes_length:
+            raise ValueError("Import notes exceed the configured maximum length")
+        return self
+
+
+class DataImportErrorRead(BaseModel):
+    id: int
+    import_batch_id: int
+    row_index: int
+    error_code: str
+    message: str
+    source_context: dict[str, Any]
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
 
 class DataImportRead(BaseModel):
     id: int
     source_id: int
     idempotency_key: str
     imported_at: datetime
+    failed_at: datetime | None
+    failure_summary: str | None
     status: ImportStatus
     row_count: int
     accepted_rows: int
     rejected_rows: int
     partial_mode: bool
     notes: str
+    errors: list[DataImportErrorRead]
     model_config = ConfigDict(from_attributes=True)
 
 
