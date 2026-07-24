@@ -29,7 +29,7 @@ def test_create_and_get_investor_profile(client: TestClient) -> None:
     assert created.status_code == 201
     body = created.json()
     assert body["base_currency"] == "USD"
-    assert body["risk_profile"]["risk_budget"]["minimum_cash_allocation"] == 0.1
+    assert body["risk_profile"]["risk_budget"]["minimum_cash_allocation"] == "0.100000"
 
     fetched = client.get(f"/api/v1/investors/{body['id']}")
     assert fetched.status_code == 200

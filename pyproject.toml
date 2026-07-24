@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "macrovision"
-version = "0.4.1"
+version = "0.4.2"
 description = "Investment Decision Intelligence Platform"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+postgres = [
+  "psycopg[binary]>=3.2,<4",
+]
 dev = [
   "httpx>=0.27,<1",
   "mypy>=1.11,<2",

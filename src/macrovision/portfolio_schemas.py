@@ -1,8 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from macrovision.contracts import utc_timestamp
 from macrovision.portfolio_models import TransactionType
 
 Money = Decimal
@@ -30,6 +31,11 @@ class TransactionCreate(BaseModel):
     currency: str = Field(default="USD", pattern=r"^[A-Za-z]{3}$")
     note: str = Field(default="", max_length=2000)
     occurred_at: datetime | None = None
+
+    @field_validator("occurred_at")
+    @classmethod
+    def normalize_occurred_at(cls, value: datetime | None) -> datetime | None:
+        return utc_timestamp(value) if value is not None else None
 
     @model_validator(mode="after")
     def validate_transaction_fields(self) -> "TransactionCreate":

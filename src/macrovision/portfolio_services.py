@@ -32,12 +32,12 @@ def _quantity(value: Decimal) -> Decimal:
     return rounded
 
 
-def _utc_naive(value: datetime | None) -> datetime:
+def _utc_timestamp(value: datetime | None) -> datetime:
     if value is None:
-        return datetime.now(UTC).replace(tzinfo=None)
-    if value.tzinfo is None:
-        return value
-    return value.astimezone(UTC).replace(tzinfo=None)
+        return datetime.now(UTC)
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise PortfolioDomainError("Timestamp must include a UTC offset")
+    return value.astimezone(UTC)
 
 
 class PortfolioNotFoundError(Exception):
@@ -83,8 +83,10 @@ def create_portfolio(session: Session, payload: schemas.PortfolioCreate) -> mode
     return get_portfolio(session, portfolio.id)
 
 
-def list_portfolios(session: Session) -> list[models.Portfolio]:
-    statement = _portfolio_statement().order_by(models.Portfolio.id)
+def list_portfolios(
+    session: Session, *, limit: int = 100, offset: int = 0
+) -> list[models.Portfolio]:
+    statement = _portfolio_statement().order_by(models.Portfolio.id).limit(limit).offset(offset)
     return list(session.scalars(statement).unique())
 
 
@@ -234,7 +236,7 @@ def record_transaction(
             currency=payload.currency.upper(),
             realized_pl=realized_pl,
             note=payload.note,
-            occurred_at=_utc_naive(payload.occurred_at),
+            occurred_at=_utc_timestamp(payload.occurred_at),
         )
         _mark_mutated(portfolio)
         _verify_accounting_invariants(portfolio)
@@ -250,12 +252,16 @@ def record_transaction(
         raise
 
 
-def list_transactions(session: Session, portfolio_id: int) -> list[models.PortfolioTransaction]:
+def list_transactions(
+    session: Session, portfolio_id: int, *, limit: int = 100, offset: int = 0
+) -> list[models.PortfolioTransaction]:
     get_portfolio(session, portfolio_id)
     statement = (
         select(models.PortfolioTransaction)
         .where(models.PortfolioTransaction.portfolio_id == portfolio_id)
         .order_by(models.PortfolioTransaction.occurred_at, models.PortfolioTransaction.id)
+        .limit(limit)
+        .offset(offset)
     )
     return list(session.scalars(statement))
 
@@ -384,7 +390,7 @@ def create_snapshot(session: Session, portfolio_id: int) -> models.PortfolioSnap
     summary = portfolio_summary(portfolio)
     snapshot = models.PortfolioSnapshot(
         portfolio_id=portfolio.id,
-        captured_at=datetime.now(UTC).replace(tzinfo=None),
+        captured_at=datetime.now(UTC),
         total_value=summary.total_value,
         position_value=summary.position_value,
         base_cash_balance=summary.base_cash_balance,
@@ -404,12 +410,16 @@ def create_snapshot(session: Session, portfolio_id: int) -> models.PortfolioSnap
     return snapshot
 
 
-def list_snapshots(session: Session, portfolio_id: int) -> list[models.PortfolioSnapshot]:
+def list_snapshots(
+    session: Session, portfolio_id: int, *, limit: int = 100, offset: int = 0
+) -> list[models.PortfolioSnapshot]:
     get_portfolio(session, portfolio_id)
     statement = (
         select(models.PortfolioSnapshot)
         .where(models.PortfolioSnapshot.portfolio_id == portfolio_id)
         .order_by(models.PortfolioSnapshot.captured_at, models.PortfolioSnapshot.id)
+        .limit(limit)
+        .offset(offset)
     )
     return list(session.scalars(statement))
 

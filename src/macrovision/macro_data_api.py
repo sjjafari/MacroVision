@@ -1,18 +1,17 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from macrovision import macro_data_models as models
 from macrovision import macro_data_schemas as schemas
 from macrovision import macro_data_services as services
+from macrovision.contracts import PageLimit, PageOffset
 from macrovision.database import get_db
 
 router = APIRouter(tags=["macro-data"])
 DbSession = Annotated[Session, Depends(get_db)]
-PageLimit = Annotated[int, Query(ge=1, le=200)]
-PageOffset = Annotated[int, Query(ge=0)]
 
 
 def _http_error(exc: Exception) -> HTTPException:
@@ -165,12 +164,22 @@ def observations_as_of(
     response_model=list[schemas.DataRevisionRead],
 )
 def list_revisions(
-    series_id: int, observation_id: int, session: DbSession
+    series_id: int,
+    observation_id: int,
+    session: DbSession,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
 ) -> list[schemas.DataRevisionRead]:
     try:
         return [
             schemas.DataRevisionRead.model_validate(item)
-            for item in services.list_revisions(session, series_id, observation_id)
+            for item in services.list_revisions(
+                session,
+                series_id,
+                observation_id,
+                limit=limit,
+                offset=offset,
+            )
         ]
     except services.DataNotFoundError as exc:
         raise _http_error(exc) from exc
@@ -222,6 +231,32 @@ def get_quality_issue(issue_id: int, session: DbSession) -> schemas.QualityIssue
         return services.quality_issue_to_read(services.get_quality_issue(session, issue_id))
     except services.DataNotFoundError as exc:
         raise _http_error(exc) from exc
+
+
+@router.get(
+    "/data-quality/issues/{issue_id}/history",
+    response_model=list[schemas.QualityIssueEventRead],
+)
+def list_quality_issue_history(
+    issue_id: int,
+    session: DbSession,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
+) -> list[schemas.QualityIssueEventRead]:
+    try:
+        return [
+            schemas.QualityIssueEventRead.model_validate(event)
+            for event in services.list_quality_issue_events(
+                session, issue_id, limit=limit, offset=offset
+            )
+        ]
+    except services.DataNotFoundError as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/data-quality/scans/stale", response_model=schemas.StaleScanRead)
+def scan_stale_quality_issues(session: DbSession) -> schemas.StaleScanRead:
+    return services.scan_stale_series(session)
 
 
 def _change_issue_status(

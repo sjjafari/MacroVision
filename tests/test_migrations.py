@@ -38,6 +38,7 @@ def test_alembic_schema_has_stabilization_constraints(migrated_engine: Engine) -
         column["name"] for column in schema.get_columns("data_import_batches")
     }
     assert "data_import_errors" in schema.get_table_names()
+    assert "data_quality_issue_events" in schema.get_table_names()
     checks = {
         constraint["name"]
         for table in ("portfolios", "research_journals", "data_import_batches")
@@ -52,6 +53,12 @@ def test_alembic_schema_has_stabilization_constraints(migrated_engine: Engine) -
     assert foreign_key["options"]["ondelete"] == "RESTRICT"
     indexes = {index["name"] for index in schema.get_indexes("data_import_errors")}
     assert "ix_import_error_batch_row" in indexes
+    quality_event_fk = schema.get_foreign_keys("data_quality_issue_events")[0]
+    assert quality_event_fk["options"]["ondelete"] == "RESTRICT"
+    quality_indexes = {index["name"] for index in schema.get_indexes("data_quality_issue_events")}
+    assert "ix_quality_event_issue_time" in quality_indexes
+    issue_indexes = {index["name"]: index for index in schema.get_indexes("data_quality_issues")}
+    assert bool(issue_indexes["uq_open_stale_issue_per_series"]["unique"])
 
 
 def test_legacy_rows_survive_upgrade_to_stabilization(
@@ -69,7 +76,7 @@ def test_legacy_rows_survive_upgrade_to_stabilization(
                 "INSERT INTO investor_profiles "
                 "(id,name,base_currency,investment_horizon_years,liquidity_need,"
                 "objectives,constraints) VALUES "
-                "(1,'Legacy','USD',10,0.2,'Preserve capital','None')"
+                "(1,'Legacy','USD',10,0.1234565,'Preserve capital','None')"
             )
         )
         connection.execute(
@@ -78,7 +85,7 @@ def test_legacy_rows_survive_upgrade_to_stabilization(
                 "(id,investor_id,asset,hypothesis,evidence_for,evidence_against,"
                 "critic_review,probability,confidence,invalidation_conditions,decision,"
                 "outcome,lessons,status) VALUES "
-                "(1,1,'Cash','H','For','Against','Critic',0.6,0.5,'Rule','Hold',"
+                "(1,1,'Cash','H','For','Against','Critic',0.6000005,0.5000015,'Rule','Hold',"
                 "'Safe','Documented','closed')"
             )
         )
@@ -116,8 +123,31 @@ def test_legacy_rows_survive_upgrade_to_stabilization(
         assert connection.scalar(
             text("SELECT closed_at IS NOT NULL FROM research_journals WHERE id=1")
         )
+        assert (
+            connection.scalar(text("SELECT liquidity_need FROM investor_profiles WHERE id=1"))
+            == 123456
+        )
+        assert (
+            connection.scalar(text("SELECT probability FROM research_journals WHERE id=1"))
+            == 600000
+        )
+        assert (
+            connection.scalar(text("SELECT confidence FROM research_journals WHERE id=1")) == 500002
+        )
         assert connection.scalar(text("SELECT COUNT(*) FROM decision_cases")) == 1
         assert connection.scalar(text("SELECT COUNT(*) FROM data_import_batches")) == 1
+    command.downgrade(config, "20260724_0005")
+    with engine.connect() as connection:
+        downgraded = connection.scalar(
+            text("SELECT liquidity_need FROM investor_profiles WHERE id=1")
+        )
+        assert downgraded == pytest.approx(0.123456)
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert (
+            connection.scalar(text("SELECT liquidity_need FROM investor_profiles WHERE id=1"))
+            == 123456
+        )
     engine.dispose()
     get_settings.cache_clear()
 
@@ -152,6 +182,7 @@ def test_migration_backed_portfolio_service_and_constraints(migrated_engine: Eng
         "20260723_0002",
         "20260723_0003",
         "20260724_0004",
+        "20260724_0005",
     ],
 )
 def test_each_legacy_schema_upgrades_to_head(
@@ -168,7 +199,7 @@ def test_each_legacy_schema_upgrades_to_head(
     engine = create_database_engine(database_url)
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "20260724_0005"
+            "20260724_0006"
         )
     engine.dispose()
     get_settings.cache_clear()

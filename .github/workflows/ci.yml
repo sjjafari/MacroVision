@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: macrovision
+          POSTGRES_PASSWORD: macrovision
+          POSTGRES_DB: macrovision
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U macrovision"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev,postgres]"
+      - run: ruff format --check .
+      - run: ruff check .
+      - run: mypy
+      - run: pytest
+      - name: SQLite migration cycle
+        env:
+          MACROVISION_DATABASE_URL: sqlite:////tmp/macrovision-ci.db
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+          alembic upgrade head
+      - name: PostgreSQL migration cycle
+        env:
+          MACROVISION_DATABASE_URL: postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+          alembic upgrade head

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_prefix="MACROVISION_",
         case_sensitive=False,
-        extra="ignore",
+        extra="forbid",
     )
 
 

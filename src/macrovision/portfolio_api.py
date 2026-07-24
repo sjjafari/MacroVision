@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from macrovision import portfolio_schemas as schemas
 from macrovision import portfolio_services as services
+from macrovision.contracts import PageLimit, PageOffset
 from macrovision.database import get_db
 from macrovision.integrity import IntegrityConflictError
 
@@ -27,9 +28,12 @@ def create_portfolio(payload: schemas.PortfolioCreate, session: DbSession) -> sc
 
 
 @router.get("", response_model=list[schemas.PortfolioRead])
-def list_portfolios(session: DbSession) -> list[schemas.PortfolioRead]:
+def list_portfolios(
+    session: DbSession, limit: PageLimit = 100, offset: PageOffset = 0
+) -> list[schemas.PortfolioRead]:
     return [
-        services.portfolio_to_read(portfolio) for portfolio in services.list_portfolios(session)
+        services.portfolio_to_read(portfolio)
+        for portfolio in services.list_portfolios(session, limit=limit, offset=offset)
     ]
 
 
@@ -62,11 +66,18 @@ def record_transaction(
 
 
 @router.get("/{portfolio_id}/transactions", response_model=list[schemas.TransactionRead])
-def list_transactions(portfolio_id: int, session: DbSession) -> list[schemas.TransactionRead]:
+def list_transactions(
+    portfolio_id: int,
+    session: DbSession,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
+) -> list[schemas.TransactionRead]:
     try:
         return [
             schemas.TransactionRead.model_validate(transaction)
-            for transaction in services.list_transactions(session, portfolio_id)
+            for transaction in services.list_transactions(
+                session, portfolio_id, limit=limit, offset=offset
+            )
         ]
     except (services.PortfolioNotFoundError, IntegrityConflictError) as exc:
         raise _http_error(exc) from exc
@@ -113,11 +124,18 @@ def create_snapshot(portfolio_id: int, session: DbSession) -> schemas.SnapshotRe
 
 
 @router.get("/{portfolio_id}/snapshots", response_model=list[schemas.SnapshotRead])
-def list_snapshots(portfolio_id: int, session: DbSession) -> list[schemas.SnapshotRead]:
+def list_snapshots(
+    portfolio_id: int,
+    session: DbSession,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
+) -> list[schemas.SnapshotRead]:
     try:
         return [
             services.snapshot_to_read(snapshot)
-            for snapshot in services.list_snapshots(session, portfolio_id)
+            for snapshot in services.list_snapshots(
+                session, portfolio_id, limit=limit, offset=offset
+            )
         ]
     except services.PortfolioNotFoundError as exc:
         raise _http_error(exc) from exc

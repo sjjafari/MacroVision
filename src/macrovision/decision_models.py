@@ -5,7 +5,6 @@ from enum import StrEnum
 from sqlalchemy import (
     CheckConstraint,
     Date,
-    DateTime,
     Enum,
     ForeignKey,
     Index,
@@ -19,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from macrovision.database import Base
-from macrovision.persistence_types import ScaledDecimal
+from macrovision.persistence_types import ScaledDecimal, UTCDateTime
 
 SCORE_SCALE = 6
 ScoreValue = ScaledDecimal(SCORE_SCALE)
@@ -73,9 +72,9 @@ class DecisionCase(Base):
     )
     current_version: Mapped[int] = mapped_column(Integer, default=1)
     lock_version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), server_default=func.now(), onupdate=func.now()
     )
 
     hypotheses: Mapped[list["DecisionHypothesis"]] = relationship(
@@ -129,7 +128,7 @@ class DecisionHypothesis(Base):
     decision_id: Mapped[int] = mapped_column(ForeignKey("decision_cases.id", ondelete="RESTRICT"))
     statement: Mapped[str] = mapped_column(Text)
     rationale: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     decision: Mapped[DecisionCase] = relationship(back_populates="hypotheses")
     __table_args__ = (Index("ix_hypothesis_decision_created", "decision_id", "created_at"),)
 
@@ -146,7 +145,7 @@ class SupportingEvidence(Base):
     reliability_score: Mapped[Decimal] = mapped_column(ScoreValue)
     relevance_score: Mapped[Decimal] = mapped_column(ScoreValue)
     notes: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     decision: Mapped[DecisionCase] = relationship(back_populates="supporting_evidence")
     __table_args__ = (
         CheckConstraint(
@@ -173,7 +172,7 @@ class OpposingEvidence(Base):
     reliability_score: Mapped[Decimal] = mapped_column(ScoreValue)
     relevance_score: Mapped[Decimal] = mapped_column(ScoreValue)
     notes: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     decision: Mapped[DecisionCase] = relationship(back_populates="opposing_evidence")
     __table_args__ = (
         CheckConstraint(
@@ -197,7 +196,7 @@ class CriticReview(Base):
     analysis: Mapped[str] = mapped_column(Text)
     key_risks: Mapped[str] = mapped_column(Text)
     recommendation: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     decision: Mapped[DecisionCase] = relationship(back_populates="critic_reviews")
     __table_args__ = (Index("ix_critic_decision_created", "decision_id", "created_at"),)
 
@@ -210,7 +209,7 @@ class InvalidationRule(Base):
     condition: Mapped[str] = mapped_column(Text)
     observation_source: Mapped[str] = mapped_column(String(300))
     notes: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     decision: Mapped[DecisionCase] = relationship(back_populates="invalidation_rules")
     __table_args__ = (Index("ix_rule_decision_created", "decision_id", "created_at"),)
 
@@ -225,7 +224,7 @@ class DecisionOutcome(Base):
     outcome: Mapped[str] = mapped_column(Text)
     lessons_learned: Mapped[str] = mapped_column(Text)
     accuracy_assessment: Mapped[Decimal] = mapped_column(ScoreValue)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     decision: Mapped[DecisionCase] = relationship(back_populates="outcome")
     __table_args__ = (
         CheckConstraint(
@@ -247,7 +246,7 @@ class DecisionRevision(Base):
     confidence: Mapped[Decimal] = mapped_column(ScoreValue)
     rationale: Mapped[str] = mapped_column(Text)
     change_summary: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     decision: Mapped[DecisionCase] = relationship(back_populates="revisions")
     __table_args__ = (
         UniqueConstraint("decision_id", "version", name="uq_revision_decision_version"),

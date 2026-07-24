@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
@@ -12,6 +12,7 @@ from pydantic import (
 )
 
 from macrovision.config import get_settings
+from macrovision.contracts import utc_timestamp
 from macrovision.macro_data_models import (
     DataFrequency,
     ImportStatus,
@@ -38,9 +39,7 @@ DataDecimal = Annotated[
 
 
 def _aware_utc(value: datetime) -> datetime:
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("timestamp must include a UTC offset")
-    return value.astimezone(UTC)
+    return utc_timestamp(value)
 
 
 class DataSourceCreate(BaseModel):
@@ -247,4 +246,22 @@ class QualityIssueRead(BaseModel):
 
 class QualityIssueAction(BaseModel):
     expected_lock_version: int = Field(gt=0)
-    notes: str = ""
+    notes: str = Field(default="", max_length=1000)
+    actor_reference: str | None = Field(default=None, max_length=200)
+
+
+class QualityIssueEventRead(BaseModel):
+    id: int
+    issue_id: int
+    previous_status: QualityIssueStatus
+    new_status: QualityIssueStatus
+    event_timestamp: datetime
+    note: str
+    actor_reference: str | None
+    source_lock_version: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StaleScanRead(BaseModel):
+    inspected_count: int
+    created_count: int

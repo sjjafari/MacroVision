@@ -56,6 +56,23 @@ def get_investor_profile(session: Session, profile_id: int) -> models.InvestorPr
     return profile
 
 
+def list_investor_profiles(
+    session: Session, *, limit: int = 100, offset: int = 0
+) -> list[models.InvestorProfile]:
+    statement = (
+        select(models.InvestorProfile)
+        .options(
+            selectinload(models.InvestorProfile.risk_profile).selectinload(
+                models.RiskProfile.risk_budget
+            )
+        )
+        .order_by(models.InvestorProfile.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(session.scalars(statement))
+
+
 def create_journal(session: Session, payload: schemas.JournalCreate) -> models.ResearchJournal:
     get_investor_profile(session, payload.investor_id)
     journal = models.ResearchJournal(
@@ -76,6 +93,19 @@ def get_journal(session: Session, journal_id: int) -> models.ResearchJournal:
     return journal
 
 
+def list_journals(
+    session: Session, *, limit: int = 100, offset: int = 0
+) -> list[models.ResearchJournal]:
+    return list(
+        session.scalars(
+            select(models.ResearchJournal)
+            .order_by(models.ResearchJournal.id)
+            .limit(limit)
+            .offset(offset)
+        )
+    )
+
+
 def close_journal(
     session: Session, journal_id: int, payload: schemas.JournalClose
 ) -> models.ResearchJournal:
@@ -90,7 +120,7 @@ def close_journal(
     journal.outcome = payload.outcome
     journal.lessons = payload.lessons
     journal.status = models.JournalStatus.closed
-    journal.closed_at = datetime.now(UTC).replace(tzinfo=None)
+    journal.closed_at = datetime.now(UTC)
     journal.lock_version += 1
     commit_or_conflict(
         session,

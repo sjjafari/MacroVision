@@ -446,7 +446,12 @@ def observations_as_of(
 
 
 def list_revisions(
-    session: Session, series_id: int, observation_id: int
+    session: Session,
+    series_id: int,
+    observation_id: int,
+    *,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[models.DataRevision]:
     get_series(session, series_id)
     observation = session.get(models.DataObservation, observation_id)
@@ -456,7 +461,9 @@ def list_revisions(
         session.scalars(
             select(models.DataRevision)
             .where(models.DataRevision.observation_id == observation_id)
-            .order_by(models.DataRevision.sequence)
+            .order_by(models.DataRevision.sequence, models.DataRevision.id)
+            .limit(limit)
+            .offset(offset)
         )
     )
 
@@ -640,14 +647,19 @@ def get_import(session: Session, import_id: int) -> models.DataImportBatch:
     return batch
 
 
-def _detect_stale_series(session: Session) -> None:
+def scan_stale_series(session: Session) -> schemas.StaleScanRead:
     now = _now()
-    candidates = session.scalars(
-        select(models.DataSeries).where(
-            models.DataSeries.is_active.is_(True),
-            models.DataSeries.stale_after_days.is_not(None),
+    candidates = list(
+        session.scalars(
+            select(models.DataSeries)
+            .where(
+                models.DataSeries.is_active.is_(True),
+                models.DataSeries.stale_after_days.is_not(None),
+            )
+            .order_by(models.DataSeries.id)
         )
     )
+    created = 0
     for series in candidates:
         latest = session.scalar(
             select(func.max(models.DataObservation.observed_at)).where(
@@ -670,13 +682,14 @@ def _detect_stale_series(session: Session) -> None:
                     issue_type=models.QualityIssueType.stale_series,
                     message="Series has exceeded its configured staleness threshold",
                 )
+                created += 1
     _commit(session)
+    return schemas.StaleScanRead(inspected_count=len(candidates), created_count=created)
 
 
 def list_quality_issues(
     session: Session, *, limit: int, offset: int
 ) -> list[models.DataQualityIssue]:
-    _detect_stale_series(session)
     limit, offset = _page(limit, offset)
     return list(
         session.scalars(
@@ -706,6 +719,8 @@ def update_quality_issue(
     if issue.lock_version != payload.expected_lock_version:
         raise DataConflictError("Data quality issue was changed; reload and retry")
     now = _now()
+    previous_status = issue.status
+    source_lock_version = issue.lock_version
     if target == models.QualityIssueStatus.acknowledged:
         if issue.status != models.QualityIssueStatus.open:
             raise DataConflictError("Only open issues can be acknowledged")
@@ -717,9 +732,39 @@ def update_quality_issue(
         issue.resolution_notes = payload.notes
     issue.status = target
     issue.lock_version += 1
+    session.add(
+        models.DataQualityIssueEvent(
+            issue=issue,
+            previous_status=previous_status,
+            new_status=target,
+            event_timestamp=now,
+            note=payload.notes,
+            actor_reference=payload.actor_reference,
+            source_lock_version=source_lock_version,
+        )
+    )
     _commit(session)
     session.refresh(issue)
     return issue
+
+
+def list_quality_issue_events(
+    session: Session, issue_id: int, *, limit: int, offset: int
+) -> list[models.DataQualityIssueEvent]:
+    get_quality_issue(session, issue_id)
+    limit, offset = _page(limit, offset)
+    return list(
+        session.scalars(
+            select(models.DataQualityIssueEvent)
+            .where(models.DataQualityIssueEvent.issue_id == issue_id)
+            .order_by(
+                models.DataQualityIssueEvent.event_timestamp,
+                models.DataQualityIssueEvent.id,
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+    )
 
 
 def quality_issue_to_read(

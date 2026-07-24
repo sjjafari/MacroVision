@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from macrovision import schemas, services
+from macrovision.contracts import PageLimit, PageOffset
 from macrovision.database import get_db
 from macrovision.integrity import IntegrityConflictError
 
@@ -35,6 +36,20 @@ def create_investor(
 
 
 @router.get(
+    "/investors",
+    response_model=list[schemas.InvestorProfileRead],
+    tags=["investor profiles"],
+)
+def list_investors(
+    session: DbSession, limit: PageLimit = 100, offset: PageOffset = 0
+) -> list[schemas.InvestorProfileRead]:
+    return [
+        schemas.InvestorProfileRead.model_validate(profile)
+        for profile in services.list_investor_profiles(session, limit=limit, offset=offset)
+    ]
+
+
+@router.get(
     "/investors/{profile_id}",
     response_model=schemas.InvestorProfileRead,
     tags=["investor profiles"],
@@ -62,6 +77,21 @@ def create_journal(payload: schemas.JournalCreate, session: DbSession) -> schema
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except IntegrityConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/journals",
+    response_model=list[schemas.JournalRead],
+    tags=["research journals"],
+    deprecated=True,
+)
+def list_journals(
+    session: DbSession, limit: PageLimit = 100, offset: PageOffset = 0
+) -> list[schemas.JournalRead]:
+    return [
+        schemas.JournalRead.model_validate(journal)
+        for journal in services.list_journals(session, limit=limit, offset=offset)
+    ]
 
 
 @router.get(

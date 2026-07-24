@@ -1,11 +1,10 @@
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
     CheckConstraint,
-    DateTime,
     Enum,
-    Float,
     ForeignKey,
     Integer,
     String,
@@ -17,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 
 from macrovision.database import Base
+from macrovision.persistence_types import ScaledDecimal, UTCDateTime
 
 
 class RiskTolerance(StrEnum):
@@ -40,10 +40,10 @@ class InvestorProfile(Base):
     name: Mapped[str] = mapped_column(String(120), index=True)
     base_currency: Mapped[str] = mapped_column(String(3), default="USD")
     investment_horizon_years: Mapped[int]
-    liquidity_need: Mapped[float] = mapped_column(Float, default=0.0)
+    liquidity_need: Mapped[Decimal] = mapped_column(ScaledDecimal(6), default=Decimal("0"))
     objectives: Mapped[str] = mapped_column(Text)
     constraints: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
 
     risk_profile: Mapped["RiskProfile"] = relationship(
         back_populates="investor", cascade="all, delete-orphan", uselist=False
@@ -53,7 +53,8 @@ class InvestorProfile(Base):
     __table_args__ = (
         CheckConstraint("investment_horizon_years > 0", name="ck_profile_horizon_positive"),
         CheckConstraint(
-            "liquidity_need >= 0 AND liquidity_need <= 1", name="ck_profile_liquidity_range"
+            "liquidity_need >= 0 AND liquidity_need <= 1000000",
+            name="ck_profile_liquidity_range",
         ),
     )
 
@@ -66,8 +67,8 @@ class RiskProfile(Base):
         ForeignKey("investor_profiles.id", ondelete="CASCADE"), unique=True
     )
     tolerance: Mapped[RiskTolerance] = mapped_column(Enum(RiskTolerance))
-    max_drawdown: Mapped[float] = mapped_column(Float)
-    loss_capacity: Mapped[float] = mapped_column(Float)
+    max_drawdown: Mapped[Decimal] = mapped_column(ScaledDecimal(6))
+    loss_capacity: Mapped[Decimal] = mapped_column(ScaledDecimal(6))
     notes: Mapped[str] = mapped_column(Text, default="")
 
     investor: Mapped[InvestorProfile] = relationship(back_populates="risk_profile")
@@ -76,8 +77,14 @@ class RiskProfile(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("max_drawdown >= 0 AND max_drawdown <= 1", name="ck_risk_drawdown_range"),
-        CheckConstraint("loss_capacity >= 0 AND loss_capacity <= 1", name="ck_risk_capacity_range"),
+        CheckConstraint(
+            "max_drawdown >= 0 AND max_drawdown <= 1000000",
+            name="ck_risk_drawdown_range",
+        ),
+        CheckConstraint(
+            "loss_capacity >= 0 AND loss_capacity <= 1000000",
+            name="ck_risk_capacity_range",
+        ),
     )
 
 
@@ -88,22 +95,23 @@ class RiskBudget(Base):
     risk_profile_id: Mapped[int] = mapped_column(
         ForeignKey("risk_profiles.id", ondelete="CASCADE"), unique=True
     )
-    total_risk_budget: Mapped[float] = mapped_column(Float)
-    per_decision_limit: Mapped[float] = mapped_column(Float)
-    minimum_cash_allocation: Mapped[float] = mapped_column(Float, default=0.0)
+    total_risk_budget: Mapped[Decimal] = mapped_column(ScaledDecimal(6))
+    per_decision_limit: Mapped[Decimal] = mapped_column(ScaledDecimal(6))
+    minimum_cash_allocation: Mapped[Decimal] = mapped_column(ScaledDecimal(6), default=Decimal("0"))
 
     risk_profile: Mapped[RiskProfile] = relationship(back_populates="risk_budget")
 
     __table_args__ = (
         CheckConstraint(
-            "total_risk_budget >= 0 AND total_risk_budget <= 1", name="ck_budget_total_range"
+            "total_risk_budget >= 0 AND total_risk_budget <= 1000000",
+            name="ck_budget_total_range",
         ),
         CheckConstraint(
             "per_decision_limit >= 0 AND per_decision_limit <= total_risk_budget",
             name="ck_budget_decision_limit",
         ),
         CheckConstraint(
-            "minimum_cash_allocation >= 0 AND minimum_cash_allocation <= 1",
+            "minimum_cash_allocation >= 0 AND minimum_cash_allocation <= 1000000",
             name="ck_budget_cash_range",
         ),
     )
@@ -119,27 +127,31 @@ class ResearchJournal(Base):
     evidence_for: Mapped[str] = mapped_column(Text)
     evidence_against: Mapped[str] = mapped_column(Text)
     critic_review: Mapped[str] = mapped_column(Text)
-    probability: Mapped[float] = mapped_column(Float)
-    confidence: Mapped[float] = mapped_column(Float)
+    probability: Mapped[Decimal] = mapped_column(ScaledDecimal(6))
+    confidence: Mapped[Decimal] = mapped_column(ScaledDecimal(6))
     invalidation_conditions: Mapped[str] = mapped_column(Text)
     decision: Mapped[str] = mapped_column(Text, default="No action")
     outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
     lessons: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[JournalStatus] = mapped_column(Enum(JournalStatus), default=JournalStatus.draft)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     lock_version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), server_default=func.now(), onupdate=func.now()
     )
 
     investor: Mapped[InvestorProfile] = relationship(back_populates="journals")
 
     __table_args__ = (
         CheckConstraint(
-            "probability >= 0 AND probability <= 1", name="ck_journal_probability_range"
+            "probability >= 0 AND probability <= 1000000",
+            name="ck_journal_probability_range",
         ),
-        CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_journal_confidence_range"),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1000000",
+            name="ck_journal_confidence_range",
+        ),
         CheckConstraint("lock_version > 0", name="ck_journal_lock_version_positive"),
     )
     __mapper_args__ = {  # noqa: RUF012

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from macrovision import decision_schemas as schemas
 from macrovision import decision_services as services
+from macrovision.contracts import PageLimit, PageOffset
 from macrovision.database import get_db
 
 router = APIRouter(prefix="/decisions", tags=["decisions"])
@@ -24,8 +25,13 @@ def create_decision(
 
 
 @router.get("", response_model=list[schemas.DecisionCaseRead])
-def list_decisions(session: DbSession) -> list[schemas.DecisionCaseRead]:
-    return [services.decision_to_read(decision) for decision in services.list_decisions(session)]
+def list_decisions(
+    session: DbSession, limit: PageLimit = 100, offset: PageOffset = 0
+) -> list[schemas.DecisionCaseRead]:
+    return [
+        services.decision_to_read(decision)
+        for decision in services.list_decisions(session, limit=limit, offset=offset)
+    ]
 
 
 @router.get("/{decision_id}", response_model=schemas.DecisionCaseRead)
@@ -141,11 +147,16 @@ def close_decision(
 
 
 @router.get("/{decision_id}/history", response_model=list[schemas.DecisionRevisionRead])
-def list_history(decision_id: int, session: DbSession) -> list[schemas.DecisionRevisionRead]:
+def list_history(
+    decision_id: int,
+    session: DbSession,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
+) -> list[schemas.DecisionRevisionRead]:
     try:
         return [
             schemas.DecisionRevisionRead.model_validate(revision)
-            for revision in services.list_history(session, decision_id)
+            for revision in services.list_history(session, decision_id, limit=limit, offset=offset)
         ]
     except services.DecisionNotFoundError as exc:
         raise _http_error(exc) from exc

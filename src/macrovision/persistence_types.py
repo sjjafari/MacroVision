@@ -41,20 +41,24 @@ class UTCDateTime(TypeDecorator[datetime]):
     impl = DateTime
     cache_ok = True
 
+    def load_dialect_impl(self, dialect: Dialect) -> Any:
+        return dialect.type_descriptor(DateTime(timezone=dialect.name == "postgresql"))
+
     def process_bind_param(self, value: Any, dialect: Dialect) -> datetime | None:
-        del dialect
         if value is None:
             return None
         if not isinstance(value, datetime):
             raise TypeError("Timestamp values must be datetime instances")
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("Timestamp values must be timezone-aware")
-        return value.astimezone(UTC).replace(tzinfo=None)
+        normalized = value.astimezone(UTC)
+        return normalized if dialect.name == "postgresql" else normalized.replace(tzinfo=None)
 
     def process_result_value(self, value: Any, dialect: Dialect) -> datetime | None:
-        del dialect
         if value is None:
             return None
         if not isinstance(value, datetime):
             raise TypeError("Database timestamp values must be datetime instances")
-        return value.replace(tzinfo=UTC)
+        if value.tzinfo is None or value.utcoffset() is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)

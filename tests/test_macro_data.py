@@ -259,7 +259,9 @@ def test_duplicate_requires_reason_and_records_quality_issue(client: TestClient)
     assert issues[0]["issue_type"] == "duplicate_observation"
 
 
-def test_quality_range_change_frequency_and_issue_lifecycle(client: TestClient) -> None:
+def test_quality_range_change_frequency_and_issue_lifecycle(
+    client: TestClient, db_session: Session
+) -> None:
     series = create_series(
         client,
         create_source(client)["id"],
@@ -286,7 +288,11 @@ def test_quality_range_change_frequency_and_issue_lifecycle(client: TestClient) 
     issue = issues[0]
     acknowledged = client.post(
         f"/api/v1/data-quality/issues/{issue['id']}/acknowledge",
-        json={"expected_lock_version": issue["lock_version"], "notes": "Reviewing"},
+        json={
+            "expected_lock_version": issue["lock_version"],
+            "notes": "Reviewing",
+            "actor_reference": "analyst@example.test",
+        },
     )
     assert acknowledged.status_code == 200
     assert acknowledged.json()["acknowledged_at"] is not None
@@ -305,6 +311,23 @@ def test_quality_range_change_frequency_and_issue_lifecycle(client: TestClient) 
     assert resolved.status_code == 200
     assert resolved.json()["status"] == "resolved"
     assert resolved.json()["resolution_notes"] == "Source confirmed"
+    history = client.get(f"/api/v1/data-quality/issues/{issue['id']}/history").json()
+    assert [(event["previous_status"], event["new_status"]) for event in history] == [
+        ("open", "acknowledged"),
+        ("acknowledged", "resolved"),
+    ]
+    assert history[0]["note"] == "Reviewing"
+    assert history[0]["actor_reference"] == "analyst@example.test"
+    event = db_session.get(models.DataQualityIssueEvent, history[0]["id"])
+    assert event is not None
+    event.note = "Attempted overwrite"
+    with pytest.raises(ValueError, match="immutable"):
+        db_session.commit()
+    db_session.rollback()
+    db_session.delete(event)
+    with pytest.raises(ValueError, match="immutable"):
+        db_session.commit()
+    db_session.rollback()
 
 
 def test_stale_series_detection_is_idempotent(client: TestClient) -> None:
@@ -313,13 +336,18 @@ def test_stale_series_detection_is_idempotent(client: TestClient) -> None:
         create_source(client)["id"],
         extra={"stale_after_days": 1},
     )
+    assert client.get("/api/v1/data-quality/issues").json() == []
+    first_scan = client.post("/api/v1/data-quality/scans/stale")
+    second_scan = client.post("/api/v1/data-quality/scans/stale")
+    assert first_scan.json() == {"inspected_count": 1, "created_count": 1}
+    assert second_scan.json() == {"inspected_count": 1, "created_count": 0}
     first = client.get("/api/v1/data-quality/issues").json()
     second = client.get("/api/v1/data-quality/issues").json()
     assert len(first) == len(second) == 1
     assert first[0]["issue_type"] == "stale_series"
 
 
-def test_import_atomic_partial_and_idempotent(client: TestClient) -> None:
+def test_import_atomic_partial_and_idempotent(client: TestClient, db_session: Session) -> None:
     source = create_source(client)
     series = create_series(client, source["id"])
     rows = [
@@ -350,6 +378,16 @@ def test_import_atomic_partial_and_idempotent(client: TestClient) -> None:
         "series_code",
         "observed_at",
     }
+    import_error = db_session.get(models.DataImportError, failed["errors"][0]["id"])
+    assert import_error is not None
+    import_error.message = "Attempted overwrite"
+    with pytest.raises(ValueError, match="immutable"):
+        db_session.commit()
+    db_session.rollback()
+    db_session.delete(import_error)
+    with pytest.raises(ValueError, match="immutable"):
+        db_session.commit()
+    db_session.rollback()
     failed_replay = client.post(
         "/api/v1/data-imports",
         json={
@@ -453,6 +491,10 @@ def test_immutable_history_restricts_orm_and_parent_deletion(
     observation = db_session.get(models.DataObservation, created["id"])
     assert observation is not None
     observation.value = Decimal("999")
+    with pytest.raises(ValueError, match="immutable"):
+        db_session.commit()
+    db_session.rollback()
+    db_session.delete(observation)
     with pytest.raises(ValueError, match="immutable"):
         db_session.commit()
     db_session.rollback()
@@ -590,6 +632,10 @@ def test_revision_and_completed_import_are_immutable(
     )
     revision = services.list_revisions(db_session, series["id"], created["id"])[0]
     revision.reason = "Attempted overwrite"
+    with pytest.raises(ValueError, match="immutable"):
+        db_session.commit()
+    db_session.rollback()
+    db_session.delete(revision)
     with pytest.raises(ValueError, match="immutable"):
         db_session.commit()
     db_session.rollback()
