@@ -47,4 +47,32 @@ jobs:
           alembic upgrade head
           alembic check
           alembic downgrade base
+          python - <<'PY'
+          import os
+          import psycopg
+
+          owned = {
+              "risktolerance",
+              "journalstatus",
+              "transactiontype",
+              "decisionstatus",
+              "evidencesourcetype",
+              "revisionevent",
+              "seriescategory",
+              "datafrequency",
+              "seasonaladjustment",
+              "observationstatus",
+              "importstatus",
+              "qualityissuetype",
+              "qualityissuestatus",
+          }
+          with psycopg.connect(os.environ["MACROVISION_DATABASE_URL"].replace("+psycopg", "")) as connection:
+              with connection.cursor() as cursor:
+                  cursor.execute(
+                      "SELECT typname FROM pg_type WHERE typname = ANY(%s)",
+                      (list(owned),),
+                  )
+                  remaining = {row[0] for row in cursor.fetchall()}
+          assert not remaining, f"PostgreSQL enum types survived downgrade: {sorted(remaining)}"
+          PY
           alembic upgrade head

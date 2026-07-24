@@ -4,11 +4,20 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM
 
 revision: str = "20260723_0001"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+
+def _drop_owned_postgresql_enums(*names: str) -> None:
+    bind = op.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    for name in names:
+        ENUM(name=name).drop(bind, checkfirst=True)
 
 
 def upgrade() -> None:
@@ -122,3 +131,4 @@ def downgrade() -> None:
     op.drop_table("risk_profiles")
     op.drop_index("ix_investor_profiles_name", table_name="investor_profiles")
     op.drop_table("investor_profiles")
+    _drop_owned_postgresql_enums("journalstatus", "risktolerance")

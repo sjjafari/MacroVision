@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM
 
 revision: str = "20260724_0004"
 down_revision: str | None = "20260723_0003"
@@ -11,6 +12,14 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 VALUE = sa.BigInteger()
+
+
+def _drop_owned_postgresql_enums(*names: str) -> None:
+    bind = op.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    for name in names:
+        ENUM(name=name).drop(bind, checkfirst=True)
 
 
 def upgrade() -> None:
@@ -304,3 +313,12 @@ def downgrade() -> None:
     op.drop_table("data_series")
     op.drop_index("ix_data_sources_name", table_name="data_sources")
     op.drop_table("data_sources")
+    _drop_owned_postgresql_enums(
+        "qualityissuestatus",
+        "qualityissuetype",
+        "observationstatus",
+        "importstatus",
+        "seasonaladjustment",
+        "datafrequency",
+        "seriescategory",
+    )
