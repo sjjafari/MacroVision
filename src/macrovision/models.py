@@ -1,8 +1,20 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, Float, ForeignKey, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    event,
+    func,
+    inspect,
+)
+from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 
 from macrovision.database import Base
 
@@ -114,6 +126,8 @@ class ResearchJournal(Base):
     outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
     lessons: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[JournalStatus] = mapped_column(Enum(JournalStatus), default=JournalStatus.draft)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    lock_version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -126,4 +140,32 @@ class ResearchJournal(Base):
             "probability >= 0 AND probability <= 1", name="ck_journal_probability_range"
         ),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_journal_confidence_range"),
+        CheckConstraint("lock_version > 0", name="ck_journal_lock_version_positive"),
     )
+    __mapper_args__ = {  # noqa: RUF012
+        "version_id_col": lock_version,
+        "version_id_generator": False,
+    }
+
+
+def _prevent_closed_journal_mutation(
+    _mapper: object, _connection: object, target: ResearchJournal
+) -> None:
+    state = inspect(target)
+    status_history = state.attrs["status"].history
+    closing_now = (
+        status_history.deleted
+        and status_history.deleted[0] != JournalStatus.closed
+        and status_history.added == [JournalStatus.closed]
+    )
+    session = object_session(target)
+    if (
+        target.status == JournalStatus.closed
+        and not closing_now
+        and session is not None
+        and session.is_modified(target, include_collections=False)
+    ):
+        raise ValueError("Closed research journals are immutable")
+
+
+event.listen(ResearchJournal, "before_update", _prevent_closed_journal_mutation)

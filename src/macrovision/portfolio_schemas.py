@@ -72,6 +72,7 @@ class PortfolioRead(BaseModel):
     investor_id: int | None
     name: str
     base_currency: str
+    lock_version: int
     created_at: datetime
     positions: list[PositionRead]
     cash_balances: list[CashBalanceRead]

@@ -74,7 +74,6 @@ class JournalCreate(BaseModel):
     confidence: float = Field(ge=0, le=1)
     invalidation_conditions: str = Field(min_length=1)
     decision: str = "No action"
-    status: JournalStatus = JournalStatus.draft
 
 
 class JournalClose(BaseModel):
@@ -86,6 +85,9 @@ class JournalRead(JournalCreate):
     id: int
     outcome: str | None
     lessons: str | None
+    status: JournalStatus
+    closed_at: datetime | None
+    lock_version: int
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

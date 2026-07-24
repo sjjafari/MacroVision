@@ -1,5 +1,6 @@
 import hashlib
 import json
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -7,17 +8,18 @@ from typing import Any
 from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy.orm.exc import StaleDataError
 
 from macrovision import macro_data_models as models
 from macrovision import macro_data_schemas as schemas
+from macrovision.config import get_settings
+from macrovision.integrity import IntegrityConflictError, commit_or_conflict
 
 
 class DataNotFoundError(Exception):
     pass
 
 
-class DataConflictError(Exception):
+class DataConflictError(IntegrityConflictError):
     pass
 
 
@@ -27,12 +29,12 @@ def _now() -> datetime:
 
 def _commit(session: Session) -> None:
     try:
-        session.commit()
-    except (IntegrityError, StaleDataError) as exc:
-        session.rollback()
-        raise DataConflictError(
-            "Macro data update conflicted with existing or concurrent data"
-        ) from exc
+        commit_or_conflict(
+            session,
+            "Macro data update conflicted with existing or concurrent data",
+        )
+    except IntegrityConflictError as exc:
+        raise DataConflictError(str(exc)) from exc
 
 
 def _page(limit: int, offset: int) -> tuple[int, int]:
@@ -468,14 +470,18 @@ def create_import(session: Session, payload: schemas.DataImportCreate) -> models
         ).encode()
     ).hexdigest()
     existing = session.scalar(
-        select(models.DataImportBatch).where(
-            models.DataImportBatch.idempotency_key == payload.idempotency_key
-        )
+        select(models.DataImportBatch)
+        .options(selectinload(models.DataImportBatch.errors))
+        .where(models.DataImportBatch.idempotency_key == payload.idempotency_key)
     )
     if existing is not None:
         if existing.request_fingerprint != fingerprint:
             raise DataConflictError(
                 "Idempotency key was already used with a different import payload"
+            )
+        if existing.status == models.ImportStatus.failed:
+            raise DataConflictError(
+                f"Import batch {existing.id} previously failed; inspect its audit record"
             )
         return existing
     source = get_source(session, payload.source_id)
@@ -495,11 +501,15 @@ def create_import(session: Session, payload: schemas.DataImportCreate) -> models
         notes=payload.notes,
     )
     session.add(batch)
-    session.flush()
-    for row in payload.rows:
+    _commit(session)
+    batch_id = batch.id
+    accepted = 0
+    rejected = 0
+    for row_index, row in enumerate(payload.rows):
         series: models.DataSeries | None = None
         try:
-            with session.begin_nested():
+            row_transaction = session.begin_nested() if payload.partial_mode else nullcontext()
+            with row_transaction:
                 series = session.scalar(
                     select(models.DataSeries).where(models.DataSeries.code == row.series_code)
                 )
@@ -511,18 +521,44 @@ def create_import(session: Session, payload: schemas.DataImportCreate) -> models
                     session,
                     series,
                     schemas.ObservationWrite.model_validate(row.model_dump()),
-                    import_batch_id=batch.id,
+                    import_batch_id=batch_id,
                     ingestion_timestamp=imported_at,
                 )
                 session.flush()
             accepted += 1
         except (DataConflictError, IntegrityError) as exc:
             rejected += 1
+            error_code, safe_message = _safe_import_error(exc)
             if not payload.partial_mode:
                 session.rollback()
+                failed_batch = get_import(session, batch_id)
+                failed_batch.status = models.ImportStatus.failed
+                failed_batch.accepted_rows = 0
+                failed_batch.rejected_rows = failed_batch.row_count
+                failed_batch.failed_at = _now()
+                failed_batch.failure_summary = safe_message
+                session.add(
+                    _import_error(
+                        failed_batch,
+                        row_index,
+                        row,
+                        error_code,
+                        safe_message,
+                    )
+                )
+                _commit(session)
                 raise DataConflictError(
-                    "Import rejected atomically; no observations were accepted"
+                    f"Import batch {batch_id} failed atomically; no observations were accepted"
                 ) from None
+            session.add(
+                _import_error(
+                    batch,
+                    row_index,
+                    row,
+                    error_code,
+                    safe_message,
+                )
+            )
             if series is not None:
                 issue_type = (
                     models.QualityIssueType.duplicate_observation
@@ -533,7 +569,7 @@ def create_import(session: Session, payload: schemas.DataImportCreate) -> models
                     session,
                     series_id=series.id,
                     issue_type=issue_type,
-                    message=f"Import row rejected: {exc}",
+                    message=f"Import row rejected: {safe_message}",
                 )
     batch.accepted_rows = accepted
     batch.rejected_rows = rejected
@@ -547,11 +583,45 @@ def create_import(session: Session, payload: schemas.DataImportCreate) -> models
     return batch
 
 
+def _safe_import_error(exc: Exception) -> tuple[str, str]:
+    if isinstance(exc, IntegrityError):
+        return "integrity_conflict", "Row conflicts with existing persisted data"
+    message = str(exc)
+    if "unavailable for this source" in message:
+        return "series_unavailable", "Series is unavailable for the selected source"
+    if "already exists" in message:
+        return "duplicate_observation", "Observation already exists without a revision reason"
+    if "future" in message:
+        return "impossible_timestamp", "Publication timestamp cannot be in the future"
+    return "domain_conflict", "Row violates a macro data domain rule"
+
+
+def _import_error(
+    batch: models.DataImportBatch,
+    row_index: int,
+    row: schemas.ImportRow,
+    error_code: str,
+    message: str,
+) -> models.DataImportError:
+    maximum = min(get_settings().max_import_error_message_length, 500)
+    return models.DataImportError(
+        import_batch=batch,
+        row_index=row_index,
+        error_code=error_code,
+        message=message[:maximum],
+        source_context={
+            "series_code": row.series_code,
+            "observed_at": row.observed_at.isoformat(),
+        },
+    )
+
+
 def list_imports(session: Session, *, limit: int, offset: int) -> list[models.DataImportBatch]:
     limit, offset = _page(limit, offset)
     return list(
         session.scalars(
             select(models.DataImportBatch)
+            .options(selectinload(models.DataImportBatch.errors))
             .order_by(models.DataImportBatch.id)
             .limit(limit)
             .offset(offset)
@@ -560,7 +630,11 @@ def list_imports(session: Session, *, limit: int, offset: int) -> list[models.Da
 
 
 def get_import(session: Session, import_id: int) -> models.DataImportBatch:
-    batch = session.get(models.DataImportBatch, import_id)
+    batch = session.scalar(
+        select(models.DataImportBatch)
+        .options(selectinload(models.DataImportBatch.errors))
+        .where(models.DataImportBatch.id == import_id)
+    )
     if batch is None:
         raise DataNotFoundError("Data import batch not found")
     return batch

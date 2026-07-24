@@ -17,7 +17,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="MacroVision API",
-    version="0.4.0",
+    version="0.4.1",
     description=(
         "Investment Decision Intelligence Platform for hypothesis-driven research, "
         "risk budgeting, and evidence-based learning. It does not provide trading signals."

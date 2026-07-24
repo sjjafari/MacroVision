@@ -1,6 +1,6 @@
 # MacroVision
 
-MacroVision is an Investment Decision Intelligence Platform. Version 0.4 provides a
+MacroVision is an Investment Decision Intelligence Platform. Version 0.4.1 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
 decision cases, plus immutable-vintage macroeconomic and market-data storage. It is not
@@ -99,8 +99,8 @@ Or run each check:
 ## Docker
 
 ```powershell
-docker build -t macrovision:0.4 .
-docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.4
+docker build -t macrovision:0.4.1 .
+docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.4.1
 ```
 
 The container applies pending migrations before starting the API and persists SQLite
@@ -117,6 +117,11 @@ data in the `macrovision-data` volume.
 This version is for research and decision documentation only. It does not offer
 personalized financial advice, external market-data providers, authentication, AI model calls,
 portfolio optimization, real trading, or brokerage integration.
+
+The Research Journal endpoints are deprecated compatibility APIs. New decision records
+should use the Decision Engine workflow below. A legacy journal always starts in `draft`,
+can be closed only once, and is terminal after closure; its outcome, lessons, and closure
+timestamp cannot be overwritten.
 
 ## Portfolio workflow (v0.2)
 
@@ -147,6 +152,12 @@ integers so Decimal values round-trip exactly. Requests outside the supported st
 range are rejected. Trade cost basis and sell P&L are gross of fees: fees are separate,
 immutable expense transactions that reduce cash and portfolio-level realized P&L, but
 do not rewrite a position's average cost.
+
+Version 0.4.1 applies aggregate optimistic concurrency to every financial mutation. A
+concurrent stale mutation is rolled back in full and returns HTTP `409 Conflict`; no
+transaction can be committed without its matching cash and position changes. Clients do
+not send a lock version: after a 409 they should reload the portfolio, reassess available
+cash/quantity, and submit a new request only if it remains valid.
 
 ## Decision workflow (v0.3)
 
@@ -207,7 +218,9 @@ must include an offset and are normalized to UTC.
 6. Import validated rows through `POST /api/v1/data-imports`. Imports are atomic by
    default. Set `partial_mode=true` to retain valid rows and explicitly count rejected
    domain-invalid rows. Reusing an idempotency key returns the original batch and creates
-   no duplicate observations.
+   no duplicate observations. An atomic failure preserves a failed batch with its
+   timestamp, safe summary, and immutable row error while rolling back every observation
+   and revision. Partial imports retain a bounded error record for each rejected row.
 7. Review detected range, frequency, staleness, duplicate, timestamp, and change issues at
    `GET /api/v1/data-quality/issues`; acknowledge or resolve them through their explicit
    action endpoints.
@@ -219,3 +232,9 @@ Historical observations, revisions, and completed import batches are immutable. 
 issues never rewrite source data. v0.4 intentionally excludes FRED, World Bank, IMF,
 central-bank and other external integrations, web scraping, schedulers, AI analysis,
 trading recommendations, authentication, brokers, and FX conversion.
+
+Import request limits are configurable through `MACROVISION_MAX_IMPORT_ROWS`,
+`MACROVISION_MAX_IMPORT_NOTES_LENGTH`, and
+`MACROVISION_MAX_IMPORT_ERROR_MESSAGE_LENGTH`; `.env.example` contains safe local
+defaults. MacroVision v0.4.1 has no authentication. Any deployment must remain on a
+trusted private network and must not be exposed directly to the public internet.

@@ -339,6 +339,27 @@ def test_import_atomic_partial_and_idempotent(client: TestClient) -> None:
     )
     assert atomic.status_code == 409
     assert client.get(f"/api/v1/data-series/{series['id']}/observations").json() == []
+    failed = client.get("/api/v1/data-imports").json()[0]
+    assert failed["status"] == "failed"
+    assert failed["failed_at"] is not None
+    assert failed["accepted_rows"] == 0
+    assert failed["rejected_rows"] == 2
+    assert failed["errors"][0]["row_index"] == 1
+    assert failed["errors"][0]["error_code"] == "series_unavailable"
+    assert set(failed["errors"][0]["source_context"]) == {
+        "series_code",
+        "observed_at",
+    }
+    failed_replay = client.post(
+        "/api/v1/data-imports",
+        json={
+            "source_id": source["id"],
+            "idempotency_key": "atomic-1",
+            "rows": rows,
+        },
+    )
+    assert failed_replay.status_code == 409
+    assert len(client.get("/api/v1/data-imports").json()) == 1
 
     partial_payload = {
         "source_id": source["id"],
@@ -350,6 +371,7 @@ def test_import_atomic_partial_and_idempotent(client: TestClient) -> None:
     assert partial.status_code == 201, partial.text
     assert partial.json()["accepted_rows"] == 1
     assert partial.json()["rejected_rows"] == 1
+    assert partial.json()["errors"][0]["row_index"] == 1
     repeated = client.post("/api/v1/data-imports", json=partial_payload)
     assert repeated.status_code == 201
     assert repeated.json()["id"] == partial.json()["id"]
@@ -368,6 +390,56 @@ def test_import_atomic_partial_and_idempotent(client: TestClient) -> None:
     }
     assert client.post("/api/v1/data-imports", json=changed_payload).status_code == 409
     assert len(client.get(f"/api/v1/data-series/{series['id']}/observations").json()) == 1
+
+
+def test_import_limits_return_validation_errors(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from macrovision.config import get_settings
+
+    source = create_source(client)
+    series = create_series(client, source["id"])
+    monkeypatch.setattr(get_settings(), "max_import_rows", 1)
+    boundary = client.post(
+        "/api/v1/data-imports",
+        json={
+            "source_id": source["id"],
+            "idempotency_key": "at-limit",
+            "rows": [{"series_code": series["code"], **observation_payload()}],
+        },
+    )
+    assert boundary.status_code == 201
+    too_many = client.post(
+        "/api/v1/data-imports",
+        json={
+            "source_id": source["id"],
+            "idempotency_key": "too-many",
+            "rows": [
+                {"series_code": series["code"], **observation_payload()},
+                {
+                    "series_code": series["code"],
+                    **observation_payload(
+                        "2026-02-01T00:00:00Z",
+                        "2026-02-15T00:00:00Z",
+                        "101",
+                    ),
+                },
+            ],
+        },
+    )
+    assert too_many.status_code == 422
+
+    monkeypatch.setattr(get_settings(), "max_import_notes_length", 10)
+    long_notes = client.post(
+        "/api/v1/data-imports",
+        json={
+            "source_id": source["id"],
+            "idempotency_key": "long-notes",
+            "notes": "x" * 11,
+            "rows": [{"series_code": series["code"], **observation_payload()}],
+        },
+    )
+    assert long_notes.status_code == 422
 
 
 def test_immutable_history_restricts_orm_and_parent_deletion(

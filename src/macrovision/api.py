@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from macrovision import schemas, services
 from macrovision.database import get_db
+from macrovision.integrity import IntegrityConflictError
 
 router = APIRouter()
 system_router = APIRouter()
@@ -52,18 +53,22 @@ def get_investor(profile_id: int, session: DbSession) -> schemas.InvestorProfile
     response_model=schemas.JournalRead,
     status_code=status.HTTP_201_CREATED,
     tags=["research journals"],
+    deprecated=True,
 )
 def create_journal(payload: schemas.JournalCreate, session: DbSession) -> schemas.JournalRead:
     try:
         return schemas.JournalRead.model_validate(services.create_journal(session, payload))
     except services.NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except IntegrityConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get(
     "/journals/{journal_id}",
     response_model=schemas.JournalRead,
     tags=["research journals"],
+    deprecated=True,
 )
 def get_journal(journal_id: int, session: DbSession) -> schemas.JournalRead:
     try:
@@ -76,6 +81,7 @@ def get_journal(journal_id: int, session: DbSession) -> schemas.JournalRead:
     "/journals/{journal_id}/close",
     response_model=schemas.JournalRead,
     tags=["research journals"],
+    deprecated=True,
 )
 def close_journal(
     journal_id: int, payload: schemas.JournalClose, session: DbSession
@@ -86,3 +92,5 @@ def close_journal(
         )
     except services.NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (services.JournalConflictError, IntegrityConflictError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

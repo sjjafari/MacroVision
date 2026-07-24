@@ -8,6 +8,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -47,6 +48,7 @@ class Portfolio(Base):
     )
     name: Mapped[str] = mapped_column(String(120), index=True)
     base_currency: Mapped[str] = mapped_column(String(3))
+    lock_version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     positions: Mapped[list["PortfolioPosition"]] = relationship(
@@ -61,6 +63,13 @@ class Portfolio(Base):
     snapshots: Mapped[list["PortfolioSnapshot"]] = relationship(
         back_populates="portfolio", cascade="save-update, merge", passive_deletes="all"
     )
+    __table_args__ = (
+        CheckConstraint("lock_version > 0", name="ck_portfolio_lock_version_positive"),
+    )
+    __mapper_args__ = {  # noqa: RUF012
+        "version_id_col": lock_version,
+        "version_id_generator": False,
+    }
 
 
 class PortfolioPosition(Base):
