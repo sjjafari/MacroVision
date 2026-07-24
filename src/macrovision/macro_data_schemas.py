@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
@@ -108,6 +108,7 @@ class DataSeriesRead(BaseModel):
     id: int
     source_id: int
     code: str
+    provider_series_id: str | None
     name: str
     description: str
     category: SeriesCategory
@@ -128,9 +129,12 @@ class DataSeriesRead(BaseModel):
     updated_at: datetime
 
 
-class ObservationWrite(BaseModel):
+class ObservationWriteBase(BaseModel):
     observed_at: datetime
-    publication_timestamp: datetime
+    publication_timestamp: datetime | None
+    provider_vintage_start: date | None = None
+    provider_vintage_end: date | None = None
+    provider_metadata: dict[str, Any] = Field(default_factory=dict)
     value: DataDecimal | None = Field(default=None, decimal_places=8)
     status: ObservationStatus = ObservationStatus.present
     source_reference: str | None = Field(default=None, max_length=500)
@@ -138,26 +142,45 @@ class ObservationWrite(BaseModel):
 
     @field_validator("observed_at", "publication_timestamp")
     @classmethod
-    def normalize_timestamp(cls, value: datetime) -> datetime:
+    def normalize_timestamp(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
         return _aware_utc(value)
 
     @model_validator(mode="after")
-    def validate_status_value(self) -> "ObservationWrite":
+    def validate_status_value(self) -> "ObservationWriteBase":
         if self.status == ObservationStatus.present and self.value is None:
             raise ValueError("present observations require a value")
         if self.status == ObservationStatus.missing and self.value is not None:
             raise ValueError("missing observations must use a null value")
-        if self.publication_timestamp < self.observed_at:
+        if self.publication_timestamp is not None and self.publication_timestamp < self.observed_at:
             raise ValueError("publication_timestamp cannot precede observed_at")
+        if (
+            self.provider_vintage_start is not None
+            and self.provider_vintage_end is not None
+            and self.provider_vintage_end < self.provider_vintage_start
+        ):
+            raise ValueError("provider_vintage_end cannot precede provider_vintage_start")
         return self
+
+
+class ObservationWrite(ObservationWriteBase):
+    publication_timestamp: datetime
+
+
+class ProviderObservationWrite(ObservationWriteBase):
+    """Internal normalized provider observation; exact publication time may be unknown."""
 
 
 class ObservationRead(BaseModel):
     id: int
     series_id: int
     observed_at: datetime
-    publication_timestamp: datetime
+    publication_timestamp: datetime | None
     ingestion_timestamp: datetime
+    provider_vintage_start: date | None
+    provider_vintage_end: date | None
+    provider_metadata: dict[str, Any]
     value: DataDecimal | None
     status: ObservationStatus
     source_reference: str | None
@@ -173,8 +196,11 @@ class DataRevisionRead(BaseModel):
     revised_value: DataDecimal | None
     previous_status: ObservationStatus
     revised_status: ObservationStatus
-    publication_timestamp: datetime
+    publication_timestamp: datetime | None
     revision_timestamp: datetime
+    provider_vintage_start: date | None
+    provider_vintage_end: date | None
+    provider_metadata: dict[str, Any]
     reason: str
     source_reference: str | None
     model_config = ConfigDict(from_attributes=True)
@@ -225,6 +251,7 @@ class DataImportRead(BaseModel):
     rejected_rows: int
     partial_mode: bool
     notes: str
+    provider_metadata: dict[str, Any]
     errors: list[DataImportErrorRead]
     model_config = ConfigDict(from_attributes=True)
 

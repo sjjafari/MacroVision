@@ -1,9 +1,10 @@
 # MacroVision
 
-MacroVision is an Investment Decision Intelligence Platform. Version 0.4.2 provides a
+MacroVision is an Investment Decision Intelligence Platform. Version 0.5.0 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
-decision cases, plus immutable-vintage macroeconomic and market-data storage. It is not
+decision cases, immutable-vintage macroeconomic and market-data storage, and manual
+synchronization with FRED through a provider-independent integration layer. It is not
 a trading signal bot and does not connect to brokers or execute trades.
 
 ## Decision principles
@@ -38,6 +39,10 @@ Shared contracts     src/macrovision/contracts.py, errors.py
 Macro Data API       src/macrovision/macro_data_api.py
 Macro Data services  src/macrovision/macro_data_services.py
 Macro Data storage   src/macrovision/macro_data_models.py
+Provider API         src/macrovision/provider_api.py
+Provider contracts   src/macrovision/provider_contracts.py
+Provider sync        src/macrovision/provider_services.py
+FRED adapter/client  src/macrovision/fred_provider.py
 Schema history       migrations/
 Configuration        src/macrovision/config.py
 ```
@@ -103,8 +108,8 @@ Or run each check:
 ## Docker
 
 ```powershell
-docker build -t macrovision:0.4.1 .
-docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.4.1
+docker build -t macrovision:0.5.0 .
+docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.5.0
 ```
 
 The container applies pending migrations before starting the API and persists SQLite
@@ -119,7 +124,7 @@ data in the `macrovision-data` volume.
    `POST /api/v1/journals/{journal_id}/close`.
 
 This version is for research and decision documentation only. It does not offer
-personalized financial advice, external market-data providers, authentication, AI model calls,
+personalized financial advice, authentication, AI model calls,
 portfolio optimization, real trading, or brokerage integration.
 
 The Research Journal endpoints are deprecated compatibility APIs. New decision records
@@ -233,15 +238,92 @@ must include an offset and are normalized to UTC.
    protection.
 
 Historical observations, revisions, and completed import batches are immutable. Quality
-issues never rewrite source data. v0.4 intentionally excludes FRED, World Bank, IMF,
-central-bank and other external integrations, web scraping, schedulers, AI analysis,
-trading recommendations, authentication, brokers, and FX conversion.
+issues never rewrite source data. World Bank, IMF, central-bank and other external
+integrations, web scraping, schedulers, AI analysis, trading recommendations,
+authentication, brokers, and FX conversion remain intentionally excluded.
 
 Import request limits are configurable through `MACROVISION_MAX_IMPORT_ROWS`,
 `MACROVISION_MAX_IMPORT_NOTES_LENGTH`, and
 `MACROVISION_MAX_IMPORT_ERROR_MESSAGE_LENGTH`; `.env.example` contains safe local
-defaults. MacroVision v0.4.2 has no authentication. Any deployment must remain on a
+defaults. MacroVision v0.5.0 has no authentication. Any deployment must remain on a
 trusted private network and must not be exposed directly to the public internet.
+
+## External providers and FRED workflow (v0.5)
+
+External providers implement a shared contract for identity, metadata retrieval,
+observation retrieval, normalization, connectivity checks, and controlled errors. The
+Macro Data Engine consumes normalized provider records and has no dependency on FRED
+response structures. Future providers can implement this contract without changing
+Macro Data persistence, while the abstraction intentionally contains only behavior
+demonstrated by the FRED integration.
+
+Configure the API key in `.env`; it is read only from runtime configuration and is never
+stored, logged, returned, or included in import metadata:
+
+```dotenv
+MACROVISION_FRED_API_KEY=
+MACROVISION_FRED_BASE_URL=https://api.stlouisfed.org/fred
+MACROVISION_PROVIDER_REQUEST_TIMEOUT_SECONDS=10
+MACROVISION_PROVIDER_MAX_OBSERVATIONS=10000
+MACROVISION_PROVIDER_MAX_RESPONSE_BYTES=5000000
+MACROVISION_PROVIDER_MAX_RETRIES=2
+```
+
+Set `MACROVISION_FRED_API_KEY` privately to the key issued for your account; do not put
+credentials in requests, source control, logs, or synchronization metadata.
+`MACROVISION_FRED_BASE_URL` is configurable for deployment consistency but is restricted
+to the official `https://api.stlouisfed.org/fred` endpoint so credentials cannot be
+forwarded to an arbitrary host.
+
+Synchronize a series manually:
+
+```http
+POST /api/v1/providers/fred/series/CPIAUCSL/sync
+Content-Type: application/json
+
+{
+  "internal_series_code": "FRED.CPIAUCSL",
+  "category": "inflation",
+  "geography": "US",
+  "is_active": true,
+  "metadata_notes": "Headline CPI used in the macro dashboard",
+  "observation_start": "2020-01-01"
+}
+```
+
+The provider creates or reuses the `FRED` source and provider-linked series, then imports
+normalized observations through the same immutable observation/revision rules as manual
+data. Values are parsed directly as `Decimal` and stored at exact eight-decimal
+precision. FRED's `.` marker becomes `status=missing` with `value=null`; no placeholder
+number is invented. Values with more than eight decimal places are rejected rather than
+silently rounded by provider synchronization.
+
+FRED realtime fields are vintage dates, not exact publication timestamps. MacroVision
+stores them separately as provider vintage dates and leaves `publication_timestamp`
+null unless an upstream provider genuinely supplies an exact timestamp. The ingestion
+timestamp records when MacroVision learned the value. Provider request scope and safe
+provenance are retained without unrestricted upstream payloads.
+
+Historical synchronization supports one exact FRED realtime date at a time:
+`realtime_start` and `realtime_end` must both be supplied and equal. Multi-vintage
+ranges are rejected because their output semantics cannot be represented as one current
+observation per date without ambiguity.
+
+Generated synchronization keys include a fingerprint of normalized provider data.
+Replaying an unchanged response returns the prior import batch. Changed historical
+values, including missing-to-value and value-to-missing transitions, append immutable
+revisions. An explicitly supplied idempotency key cannot be reused for different data.
+
+Normal tests use deterministic mocked HTTP transports and require no FRED credentials.
+An optional live smoke test runs only when both
+`MACROVISION_ENABLE_LIVE_FRED_TESTS=true` and a valid
+`MACROVISION_FRED_API_KEY` are present. Version 0.5 remains manual-only: it adds no
+scheduler, background worker, bulk catalog ingestion, AI analysis, authentication,
+recommendation, or trading behavior.
+
+Synchronization is performed synchronously in the API request and can occupy one worker
+while bounded upstream retries complete. The endpoint has no authentication in v0.5 and
+must be exposed only on a trusted private network.
 
 ## Data contracts (v0.4.2)
 

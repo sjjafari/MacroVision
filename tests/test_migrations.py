@@ -1,16 +1,20 @@
 from collections.abc import Iterator
 from pathlib import Path
+from typing import cast
 
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, inspect, text
+from sqlalchemy import Engine, Table, inspect, text
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.schema import CreateTable
 
 from macrovision import portfolio_schemas, portfolio_services
 from macrovision.config import get_settings
 from macrovision.database import create_database_engine
+from macrovision.macro_data_models import DataObservation, DataSeries
 
 
 @pytest.fixture
@@ -39,6 +43,27 @@ def test_alembic_schema_has_stabilization_constraints(migrated_engine: Engine) -
     }
     assert "data_import_errors" in schema.get_table_names()
     assert "data_quality_issue_events" in schema.get_table_names()
+    assert {"provider_vintage_start", "provider_vintage_end", "provider_metadata"} <= {
+        column["name"] for column in schema.get_columns("data_observations")
+    }
+    series_uniques = {item["name"] for item in schema.get_unique_constraints("data_series")}
+    assert "uq_data_series_source_provider_id" in series_uniques
+    series_checks = {item["name"] for item in schema.get_check_constraints("data_series")}
+    assert "ck_series_provider_id_nonempty" in series_checks
+    assert next(
+        column
+        for column in schema.get_columns("data_observations")
+        if column["name"] == "publication_timestamp"
+    )["nullable"]
+    assert "provider_metadata" in {
+        column["name"] for column in schema.get_columns("data_import_batches")
+    }
+    import_unique_columns = {
+        column
+        for item in schema.get_unique_constraints("data_import_batches")
+        for column in item["column_names"]
+    }
+    assert "idempotency_key" in import_unique_columns
     checks = {
         constraint["name"]
         for table in ("portfolios", "research_journals", "data_import_batches")
@@ -175,6 +200,81 @@ def test_migration_backed_portfolio_service_and_constraints(migrated_engine: Eng
         session.rollback()
 
 
+def test_provider_schema_compiles_for_postgresql_with_expected_constraints() -> None:
+    dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
+    series_ddl = str(CreateTable(cast(Table, DataSeries.__table__)).compile(dialect=dialect))
+    observation_ddl = str(
+        CreateTable(cast(Table, DataObservation.__table__)).compile(dialect=dialect)
+    )
+    assert "uq_data_series_source_provider_id" in series_ddl
+    assert "ck_series_provider_id_nonempty" in series_ddl
+    publication_fragment = observation_ddl.split("publication_timestamp", 1)[1].split(",", 1)[0]
+    assert "NOT NULL" not in publication_fragment
+    migration_source = Path("migrations/versions/20260724_0007_fred_provider.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'down_revision: str | None = "20260724_0006"' in migration_source
+    assert "uq_data_series_source_provider_id" in migration_source
+    assert "ck_series_provider_id_nonempty" in migration_source
+
+
+def test_provider_provenance_downgrade_and_reupgrade_preserves_observation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'provider-cycle.db'}"
+    monkeypatch.setenv("MACROVISION_DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = Config("alembic.ini")
+    command.upgrade(config, "head")
+    engine = create_database_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO data_sources (id,code,name,description) "
+                "VALUES (1,'FRED','Federal Reserve Economic Data','Provider')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO data_series "
+                "(id,source_id,code,provider_series_id,name,description,category,"
+                "geography,frequency,unit,seasonal_adjustment,publication_lag_days,"
+                "is_active,series_metadata,lock_version) VALUES "
+                "(1,1,'FRED.GDP','GDP','GDP','GDP','growth','US','quarterly','USD',"
+                "'adjusted',0,1,'{}',1)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO data_observations "
+                "(id,series_id,observed_at,publication_timestamp,ingestion_timestamp,"
+                "provider_vintage_start,provider_vintage_end,provider_metadata,value,status) "
+                "VALUES (1,1,'2025-01-01',NULL,'2025-02-01','2025-02-01',"
+                "'2025-02-01','{}',10000000000,'present')"
+            )
+        )
+    engine.dispose()
+    command.downgrade(config, "20260724_0006")
+    engine = create_database_engine(database_url)
+    with engine.connect() as connection:
+        assert connection.scalar(
+            text("SELECT publication_timestamp IS NOT NULL FROM data_observations WHERE id=1")
+        )
+        assert "provider_series_id" not in {
+            column["name"] for column in inspect(connection).get_columns("data_series")
+        }
+    engine.dispose()
+    command.upgrade(config, "head")
+    engine = create_database_engine(database_url)
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT COUNT(*) FROM data_observations")) == 1
+        assert "provider_series_id" in {
+            column["name"] for column in inspect(connection).get_columns("data_series")
+        }
+    engine.dispose()
+    get_settings.cache_clear()
+
+
 @pytest.mark.parametrize(
     "legacy_revision",
     [
@@ -183,6 +283,7 @@ def test_migration_backed_portfolio_service_and_constraints(migrated_engine: Eng
         "20260723_0003",
         "20260724_0004",
         "20260724_0005",
+        "20260724_0006",
     ],
 )
 def test_each_legacy_schema_upgrades_to_head(
@@ -199,7 +300,7 @@ def test_each_legacy_schema_upgrades_to_head(
     engine = create_database_engine(database_url)
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "20260724_0006"
+            "20260724_0007"
         )
     engine.dispose()
     get_settings.cache_clear()
