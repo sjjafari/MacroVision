@@ -16,15 +16,16 @@ from sqlalchemy import (
     inspect,
     text,
 )
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 from sqlalchemy.orm.state import InstanceState
+from sqlalchemy.sql.elements import ColumnElement
 
 from macrovision.database import Base
 from macrovision.macro_data_models import DataObservation, DataRevision, DataSeries, DataValue
 from macrovision.persistence_types import UTCDateTime
 
 MAX_PARAMETERS_BYTES = 4096
-_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
 _HEX_CHARS = "0123456789abcdef"
 
 
@@ -36,11 +37,38 @@ def _only_characters(column: str, characters: str) -> str:
     return f"LENGTH({expression}) = 0"
 
 
-CANONICAL_CODE_CHECK = (
-    "LENGTH(code) BETWEEN 1 AND 120 AND code = UPPER(code) "
-    "AND SUBSTR(code, 1, 1) BETWEEN 'A' AND 'Z' "
-    f"AND {_only_characters('code', _CODE_CHARS)}"
-)
+class CanonicalCodeExpression(ColumnElement[bool]):
+    inherit_cache = True
+    type = Boolean()
+
+
+@compiles(CanonicalCodeExpression, "sqlite")
+def _compile_sqlite_code_check(
+    _element: CanonicalCodeExpression, _compiler: object, **_kwargs: object
+) -> str:
+    return (
+        "LENGTH(code) BETWEEN 1 AND 120 AND code = UPPER(code) "
+        "AND code GLOB '[A-Z]*' AND code NOT GLOB '*[^A-Z0-9_.-]*'"
+    )
+
+
+@compiles(CanonicalCodeExpression, "postgresql")
+def _compile_postgresql_code_check(
+    _element: CanonicalCodeExpression, _compiler: object, **_kwargs: object
+) -> str:
+    return "code ~ '^[A-Z][A-Z0-9_.-]{0,119}$'"
+
+
+@compiles(CanonicalCodeExpression)
+def _compile_default_code_check(
+    _element: CanonicalCodeExpression, _compiler: object, **_kwargs: object
+) -> str:
+    return (
+        "LENGTH(code) BETWEEN 1 AND 120 AND code = UPPER(code) "
+        "AND SUBSTR(code, 1, 1) BETWEEN 'A' AND 'Z'"
+    )
+
+
 FINGERPRINT_CHECKS = {
     name: f"{name} IS NULL OR (LENGTH({name}) = 64 AND {name} = LOWER({name}) "
     f"AND {_only_characters(name, _HEX_CHARS)})"
@@ -76,7 +104,7 @@ class DerivedSeriesDefinition(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(CANONICAL_CODE_CHECK, name="ck_derived_definition_code"),
+        CheckConstraint(CanonicalCodeExpression(), name="ck_derived_definition_code"),
         CheckConstraint("LENGTH(title) BETWEEN 1 AND 240", name="ck_derived_definition_title"),
         CheckConstraint(
             "description IS NULL OR LENGTH(description) <= 2000",

@@ -10,7 +10,6 @@ down_revision: str | None = "20260724_0008"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
 _HEX_CHARS = "0123456789abcdef"
 
 
@@ -31,6 +30,13 @@ def _fingerprint(column: str, *, nullable: bool) -> str:
 
 
 def upgrade() -> None:
+    dialect = op.get_bind().dialect.name
+    code_check = (
+        "LENGTH(code) BETWEEN 1 AND 120 AND code = UPPER(code) "
+        "AND code GLOB '[A-Z]*' AND code NOT GLOB '*[^A-Z0-9_.-]*'"
+        if dialect == "sqlite"
+        else "code ~ '^[A-Z][A-Z0-9_.-]{0,119}$'"
+    )
     op.create_table(
         "derived_series_definitions",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -51,12 +57,7 @@ def upgrade() -> None:
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
-        sa.CheckConstraint(
-            "LENGTH(code) BETWEEN 1 AND 120 AND code = UPPER(code) "
-            "AND SUBSTR(code, 1, 1) BETWEEN 'A' AND 'Z' "
-            f"AND {_only_characters('code', _CODE_CHARS)}",
-            name="ck_derived_definition_code",
-        ),
+        sa.CheckConstraint(code_check, name="ck_derived_definition_code"),
         sa.CheckConstraint("LENGTH(title) BETWEEN 1 AND 240", name="ck_derived_definition_title"),
         sa.CheckConstraint(
             "description IS NULL OR LENGTH(description) <= 2000",
