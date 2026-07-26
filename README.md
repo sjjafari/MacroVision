@@ -1,11 +1,12 @@
 # MacroVision
 
-MacroVision is an Investment Decision Intelligence Platform. Version 0.5.0 provides a
+MacroVision is an Investment Decision Intelligence Platform. Version 0.6.0 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
 decision cases, immutable-vintage macroeconomic and market-data storage, and manual
-synchronization with FRED through a provider-independent integration layer. It is not
-a trading signal bot and does not connect to brokers or execute trades.
+synchronization with FRED through a provider-independent integration layer, plus
+database-backed scheduled provider execution. It is not a trading signal bot and does
+not connect to brokers or execute trades.
 
 ## Decision principles
 
@@ -43,6 +44,10 @@ Provider API         src/macrovision/provider_api.py
 Provider contracts   src/macrovision/provider_contracts.py
 Provider sync        src/macrovision/provider_services.py
 FRED adapter/client  src/macrovision/fred_provider.py
+Scheduler API        src/macrovision/scheduler_api.py
+Scheduler services   src/macrovision/scheduler_services.py
+Scheduler storage    src/macrovision/scheduler_models.py
+Scheduler worker     src/macrovision/scheduler_worker.py
 Schema history       migrations/
 Configuration        src/macrovision/config.py
 ```
@@ -108,8 +113,8 @@ Or run each check:
 ## Docker
 
 ```powershell
-docker build -t macrovision:0.5.0 .
-docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.5.0
+docker build -t macrovision:0.6.0 .
+docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.6.0
 ```
 
 The container applies pending migrations before starting the API and persists SQLite
@@ -245,7 +250,7 @@ authentication, brokers, and FX conversion remain intentionally excluded.
 Import request limits are configurable through `MACROVISION_MAX_IMPORT_ROWS`,
 `MACROVISION_MAX_IMPORT_NOTES_LENGTH`, and
 `MACROVISION_MAX_IMPORT_ERROR_MESSAGE_LENGTH`; `.env.example` contains safe local
-defaults. MacroVision v0.5.0 has no authentication. Any deployment must remain on a
+defaults. MacroVision v0.6.0 has no authentication. Any deployment must remain on a
 trusted private network and must not be exposed directly to the public internet.
 
 ## External providers and FRED workflow (v0.5)
@@ -317,13 +322,112 @@ revisions. An explicitly supplied idempotency key cannot be reused for different
 Normal tests use deterministic mocked HTTP transports and require no FRED credentials.
 An optional live smoke test runs only when both
 `MACROVISION_ENABLE_LIVE_FRED_TESTS=true` and a valid
-`MACROVISION_FRED_API_KEY` are present. Version 0.5 remains manual-only: it adds no
-scheduler, background worker, bulk catalog ingestion, AI analysis, authentication,
-recommendation, or trading behavior.
+`MACROVISION_FRED_API_KEY` are present. Normal tests and scheduler tests never call the
+live FRED service.
 
 Synchronization is performed synchronously in the API request and can occupy one worker
 while bounded upstream retries complete. The endpoint has no authentication in v0.5 and
 must be exposed only on a trusted private network.
+
+## Scheduled provider synchronization (v0.6)
+
+Schedules persist only an allowlisted provider request: series scope, optional internal
+series code, category, geography, currency, activation flag, notes, observation range,
+and one exact historical realtime date. Credentials are read from process configuration
+at execution time and are never accepted by the scheduler API or stored in schedules,
+runs, logs, or import metadata.
+
+Create a fixed-interval schedule:
+
+```http
+POST /api/v1/provider-sync-schedules
+Content-Type: application/json
+
+{
+  "provider": "fred",
+  "provider_series_id": "CPIAUCSL",
+  "internal_series_code": "FRED.CPIAUCSL",
+  "request_config": {
+    "category": "inflation",
+    "geography": "US",
+    "observation_start": "2020-01-01"
+  },
+  "cadence_type": "fixed_interval",
+  "interval_minutes": 1440,
+  "enabled": true
+}
+```
+
+Daily UTC schedules use `"cadence_type": "daily_utc"` and a whole-minute
+`"daily_time_utc": "06:00:00"`. Read schedules with
+`GET /api/v1/provider-sync-schedules`, patch one with
+`PATCH /api/v1/provider-sync-schedules/{schedule_id}`, and use the explicit
+`/enable` and `/disable` actions with `expected_lock_version`. Lists use deterministic
+`limit`/`offset` pagination. A stale schedule version returns `409`.
+
+Queue a manual execution without performing network work in the API process:
+
+```http
+POST /api/v1/provider-sync-schedules/1/runs
+Content-Type: application/json
+
+{"idempotency_key": "operator-request-2026-07-26"}
+```
+
+The raw idempotency key is hashed before persistence. An identical request reuses the
+existing run; reusing the key after changing the schedule snapshot returns `409`.
+Inspect runs with `GET /api/v1/provider-sync-runs` and
+`GET /api/v1/provider-sync-runs/{run_id}`. Public responses omit internal fingerprints,
+sync keys, lease owners, and other worker-only fencing data.
+
+Apply migrations and start one worker cycle:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m macrovision.scheduler_worker --once
+```
+
+For a continuously polling worker:
+
+```powershell
+.\.venv\Scripts\python.exe -m macrovision.scheduler_worker
+```
+
+The worker refuses to start unless the database is at the expected Alembic head. It
+materializes at most one current run for an overdue schedule, claims eligible runs,
+renews leases in an independent session, and executes the existing
+`synchronize_provider_series` pipeline. PostgreSQL uses row locking with
+`SKIP LOCKED`; SQLite intentionally claims one run per transaction because it serializes
+writes coarsely. A database uniqueness constraint prevents concurrent execution for the
+same provider series.
+
+Run completion, retry, lease renewal, and expired-lease recovery use the run ID, lease
+owner, lease generation, and unexpired lease as fencing conditions. Retryable provider
+failures use bounded deterministic exponential backoff; validation, authentication,
+unsupported-provider, and malformed-response failures are terminal. Import
+idempotency makes a crash after provider import but before run completion safe to replay.
+Disabling a schedule prevents future materialization but does not cancel an already
+queued or running audit record.
+
+Scheduler delivery is at-least-once. Deterministic synchronization keys make replay
+safe through the existing import-batch idempotency contract, but MacroVision does not
+claim exactly-once execution.
+
+Scheduler controls are configured through:
+
+```dotenv
+MACROVISION_SCHEDULER_LEASE_SECONDS=300
+MACROVISION_SCHEDULER_HEARTBEAT_SECONDS=60
+MACROVISION_SCHEDULER_POLL_SECONDS=5
+MACROVISION_SCHEDULER_CLAIM_LIMIT=10
+MACROVISION_SCHEDULER_MAXIMUM_ATTEMPTS=2
+MACROVISION_SCHEDULER_RETRY_BASE_SECONDS=30
+MACROVISION_SCHEDULER_RETRY_MAX_SECONDS=300
+```
+
+Version 0.6 intentionally has no external scheduler framework, distributed queue,
+automatic catalog discovery, authentication, recommendation, trading, or brokerage
+behavior. The scheduler API and worker must remain on a trusted private network.
 
 ## Data contracts (v0.4.2)
 

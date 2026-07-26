@@ -8,6 +8,7 @@ from macrovision import (  # noqa: F401
     macro_data_models,
     models,
     portfolio_models,
+    scheduler_models,
 )
 from macrovision.config import get_settings
 from macrovision.database import Base

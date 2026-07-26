@@ -1055,7 +1055,7 @@ def test_provider_error_contract_and_missing_credentials(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app.dependency_overrides.pop(get_fred_provider, None)
-    monkeypatch.delenv("MACROVISION_FRED_API_KEY", raising=False)
+    monkeypatch.setenv("MACROVISION_FRED_API_KEY", "")
     get_settings.cache_clear()
     response = client.post("/api/v1/providers/fred/series/GDP/sync", json={})
     assert response.status_code == 503

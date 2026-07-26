@@ -18,6 +18,7 @@ from macrovision.macro_data_api import router as macro_data_router
 from macrovision.portfolio_api import router as portfolio_router
 from macrovision.provider_api import router as provider_router
 from macrovision.provider_contracts import ProviderError
+from macrovision.scheduler_api import router as scheduler_router
 
 
 @asynccontextmanager
@@ -28,7 +29,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="MacroVision API",
-    version="0.5.0",
+    version="0.6.0",
     description=(
         "Investment Decision Intelligence Platform for hypothesis-driven research, "
         "risk budgeting, and evidence-based learning. It does not provide trading signals."
@@ -50,3 +51,4 @@ app.include_router(portfolio_router, prefix="/api/v1")
 app.include_router(decision_router, prefix="/api/v1")
 app.include_router(macro_data_router, prefix="/api/v1")
 app.include_router(provider_router, prefix="/api/v1")
+app.include_router(scheduler_router, prefix="/api/v1")
