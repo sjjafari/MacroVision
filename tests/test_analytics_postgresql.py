@@ -79,7 +79,6 @@ def test_postgresql_code_and_partial_fingerprint_indexes(
                 )
             )
     with postgres_analytics.begin() as connection:
-        _seed_analytics(connection)
         values = {
             "version": 1,
             "status": "pending",
