@@ -26,7 +26,7 @@ from macrovision.scheduler_services import (
 )
 from macrovision.secure_logging import configure_secure_logging
 
-ALEMBIC_HEAD = "20260724_0008"
+ALEMBIC_HEAD = "20260726_0009"
 logger = logging.getLogger("macrovision.scheduler")
 
 
