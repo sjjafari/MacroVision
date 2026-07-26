@@ -24,6 +24,7 @@ from macrovision.scheduler_services import (
     recover_expired_runs,
     renew_lease,
 )
+from macrovision.secure_logging import configure_secure_logging
 
 ALEMBIC_HEAD = "20260724_0008"
 logger = logging.getLogger("macrovision.scheduler")
@@ -215,6 +216,13 @@ def _validate_options(args: argparse.Namespace, settings: Settings) -> tuple[int
     return poll_seconds, claim_limit, worker_id
 
 
+def configure_worker_logging(settings: Settings) -> None:
+    configure_secure_logging(
+        level=settings.log_level,
+        format_string="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = _parser().parse_args(argv)
@@ -222,10 +230,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         poll_seconds, claim_limit, worker_id = _validate_options(args, settings)
     except (SystemExit, ValidationError, ValueError):
         return 2
-    logging.basicConfig(
-        level=settings.log_level,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    configure_worker_logging(settings)
     try:
         verify_database(SessionLocal)
     except (DBAPIError, RuntimeError):

@@ -23,6 +23,7 @@ from macrovision.provider_contracts import (
     ProviderSeriesMetadata,
     SeriesMetadataQuery,
 )
+from macrovision.secure_logging import install_secure_logging
 
 FRED_IDENTITY = ProviderIdentity(
     code="FRED",
@@ -276,6 +277,7 @@ class FREDProvider:
         transport: httpx.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        install_secure_logging()
         api_key = settings.fred_api_key
         if api_key is None or not api_key.strip():
             raise ProviderError(
