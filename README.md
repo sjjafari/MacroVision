@@ -55,6 +55,13 @@ Configuration        src/macrovision/config.py
 The local release uses FastAPI, Pydantic, SQLAlchemy 2, Alembic, and SQLite. Database
 schema changes are owned by Alembic rather than application startup.
 
+## Planned v0.7
+
+The proposed vintage-aware, deterministic Macro Analytics Engine is documented in
+[docs/v0.7-macro-analytics-architecture.md](docs/v0.7-macro-analytics-architecture.md).
+This is a planning document only; the current package and production behavior remain
+version 0.6.0.
+
 ## Prerequisites
 
 - Python 3.11 or later
