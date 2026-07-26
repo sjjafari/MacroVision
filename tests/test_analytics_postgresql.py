@@ -71,7 +71,7 @@ def test_postgresql_code_and_partial_fingerprint_indexes(
 ) -> None:
     with postgres_analytics.begin() as connection:
         _seed_analytics(connection)
-        with connection.begin_nested(), pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError), connection.begin_nested():
             connection.execute(
                 text(
                     "INSERT INTO derived_series_definitions "
@@ -94,7 +94,7 @@ def test_postgresql_code_and_partial_fingerprint_indexes(
             "(:version,:status,:time,:time,:time,'1',:fingerprint,0,0,0,0)"
         )
         connection.execute(statement, values)
-        with connection.begin_nested(), pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError), connection.begin_nested():
             connection.execute(statement, values)
 
 
@@ -149,9 +149,9 @@ def test_postgresql_lineage_shape_and_non_null_uniqueness(
             "(1,0,1,'original',1,0,'2026-01-01')"
         )
         connection.execute(lineage)
-        with connection.begin_nested(), pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError), connection.begin_nested():
             connection.execute(lineage)
-        with connection.begin_nested(), pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError), connection.begin_nested():
             connection.execute(
                 text(
                     "INSERT INTO derived_observation_lineage "
