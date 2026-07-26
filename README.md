@@ -280,6 +280,14 @@ credentials in requests, source control, logs, or synchronization metadata.
 to the official `https://api.stlouisfed.org/fred` endpoint so credentials cannot be
 forwarded to an arbitrary host.
 
+FRED v1 requires its credential in a request query parameter. MacroVision installs a
+central runtime logging filter that removes sensitive URL parameters, authorization
+values, and URL user information before configured handlers emit records. Request
+logging from `httpx` and `httpcore` is also restricted to warning level as defense in
+depth. Operators must not remove or disable the redaction filter. Any credential exposed
+in logs must be rotated immediately, and live smoke-test output must be treated as
+sensitive until redaction has been independently verified.
+
 Synchronize a series manually:
 
 ```http
