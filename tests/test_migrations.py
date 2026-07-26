@@ -245,12 +245,13 @@ def test_scheduler_migration_downgrade_and_reupgrade_with_seeded_data(
                 "(id,schedule_id,run_key,trigger_type,provider,provider_series_id,"
                 "concurrency_key,request_snapshot,request_snapshot_fingerprint,status,"
                 "scheduled_for,started_at,completed_at,attempt_number,maximum_attempts,"
+                "created_at,"
                 "lease_generation,sync_idempotency_key,observations_received,"
                 "observations_accepted,observations_revised,observations_missing,"
                 "observations_rejected,error_code,error_message) VALUES "
                 "(1,1,:run_key,'scheduled','fred','GDP',:concurrency_key,'{}',"
                 ":fingerprint,'failed','2026-07-25 12:00:00','2026-07-25 12:00:00',"
-                "'2026-07-25 12:01:00',1,2,1,:sync_key,0,0,0,0,0,"
+                "'2026-07-25 12:01:00',1,2,'2026-07-25 12:00:00',1,:sync_key,0,0,0,0,0,"
                 "'safe_failure','Sanitized failure')"
             ),
             {

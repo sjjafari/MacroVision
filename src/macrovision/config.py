@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     provider_max_response_bytes: int = Field(default=5_000_000, gt=0, le=50_000_000)
     provider_max_retries: int = Field(default=2, ge=0, le=5)
     enable_live_fred_tests: bool = False
+    scheduler_lease_seconds: int = Field(default=300, ge=60, le=1800)
+    scheduler_heartbeat_seconds: int = Field(default=60, ge=1, le=599)
+    scheduler_poll_seconds: int = Field(default=5, ge=1, le=60)
+    scheduler_claim_limit: int = Field(default=10, ge=1, le=10)
+    scheduler_maximum_attempts: int = Field(default=2, ge=1, le=3)
+    scheduler_retry_base_seconds: int = Field(default=30, ge=1, le=300)
+    scheduler_retry_max_seconds: int = Field(default=300, ge=1, le=300)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -27,6 +34,16 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="forbid",
     )
+
+    @model_validator(mode="after")
+    def validate_scheduler_bounds(self) -> "Settings":
+        if self.scheduler_heartbeat_seconds * 3 >= self.scheduler_lease_seconds:
+            raise ValueError(
+                "Scheduler heartbeat interval must be less than one-third of lease duration"
+            )
+        if self.scheduler_retry_base_seconds > self.scheduler_retry_max_seconds:
+            raise ValueError("Scheduler retry base cannot exceed its maximum delay")
+        return self
 
 
 @lru_cache

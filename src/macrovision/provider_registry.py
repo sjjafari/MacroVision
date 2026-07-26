@@ -49,16 +49,22 @@ class ProviderRegistry:
             self._factories[normalized] = factory
 
     def create(self, name: str, settings: Settings) -> ExternalDataProvider:
+        normalized = self.require_supported(name)
+        with self._lock:
+            factory = self._factories[normalized]
+        return factory(settings)
+
+    def require_supported(self, name: str) -> str:
         normalized = normalize_provider_name(name)
         with self._lock:
-            factory = self._factories.get(normalized)
-        if factory is None:
+            supported = normalized in self._factories
+        if not supported:
             raise ProviderError(
                 ProviderErrorCode.configuration_error,
                 "Provider is not supported",
                 status_code=422,
             )
-        return factory(settings)
+        return normalized
 
     def supported_providers(self) -> tuple[str, ...]:
         with self._lock:

@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from enum import StrEnum
 from typing import Any
 
@@ -92,6 +92,113 @@ class ScheduleCadence(BaseModel):
         elif self.daily_time_utc is None or self.interval_minutes is not None:
             raise ValueError("daily_utc requires only daily_time_utc")
         return self
+
+
+class ProviderSyncScheduleCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(min_length=1, max_length=40)
+    provider_series_id: str = Field(
+        min_length=1,
+        max_length=120,
+        pattern=r"^[A-Za-z0-9_.-]+$",
+    )
+    internal_series_code: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=120,
+        pattern=r"^[A-Za-z0-9_.-]+$",
+    )
+    request_config: SafeProviderSyncConfig = Field(default_factory=SafeProviderSyncConfig)
+    cadence_type: ScheduleCadenceType
+    interval_minutes: int | None = Field(
+        default=None,
+        ge=MIN_INTERVAL_MINUTES,
+        le=MAX_INTERVAL_MINUTES,
+    )
+    daily_time_utc: time | None = None
+    enabled: bool = True
+
+    @model_validator(mode="after")
+    def validate_cadence(self) -> "ProviderSyncScheduleCreate":
+        ScheduleCadence(
+            cadence_type=self.cadence_type,
+            interval_minutes=self.interval_minutes,
+            daily_time_utc=self.daily_time_utc,
+        )
+        return self
+
+
+class ProviderSyncSchedulePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_lock_version: int = Field(gt=0)
+    request_config: SafeProviderSyncConfig | None = None
+    cadence_type: ScheduleCadenceType | None = None
+    interval_minutes: int | None = Field(
+        default=None,
+        ge=MIN_INTERVAL_MINUTES,
+        le=MAX_INTERVAL_MINUTES,
+    )
+    daily_time_utc: time | None = None
+
+
+class ProviderSyncScheduleStateChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_lock_version: int = Field(gt=0)
+
+
+class ProviderSyncRunNowRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    idempotency_key: str = Field(min_length=1, max_length=160)
+
+
+class ProviderSyncScheduleRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    provider: str
+    provider_series_id: str
+    internal_series_code: str | None
+    request_config: SafeProviderSyncConfig
+    request_config_fingerprint: str
+    cadence_type: ScheduleCadenceType
+    interval_minutes: int | None
+    daily_time_utc: time | None
+    next_run_at: datetime | None
+    enabled: bool
+    last_scheduled_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    lock_version: int
+
+
+class ProviderSyncRunRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    schedule_id: int
+    trigger_type: ProviderSyncTriggerType
+    provider: str
+    provider_series_id: str
+    status: ProviderSyncRunStatus
+    scheduled_for: datetime
+    created_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    attempt_number: int
+    maximum_attempts: int
+    next_attempt_at: datetime | None
+    observations_received: int
+    observations_accepted: int
+    observations_revised: int
+    observations_missing: int
+    observations_rejected: int
+    provider_replay: bool | None
+    error_code: str | None
+    error_message: str | None
 
 
 def validate_safe_config(value: SafeProviderSyncConfig | dict[str, Any]) -> SafeProviderSyncConfig:
