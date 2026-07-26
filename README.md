@@ -250,7 +250,7 @@ authentication, brokers, and FX conversion remain intentionally excluded.
 Import request limits are configurable through `MACROVISION_MAX_IMPORT_ROWS`,
 `MACROVISION_MAX_IMPORT_NOTES_LENGTH`, and
 `MACROVISION_MAX_IMPORT_ERROR_MESSAGE_LENGTH`; `.env.example` contains safe local
-defaults. MacroVision v0.5.0 has no authentication. Any deployment must remain on a
+defaults. MacroVision v0.6.0 has no authentication. Any deployment must remain on a
 trusted private network and must not be exposed directly to the public internet.
 
 ## External providers and FRED workflow (v0.5)
@@ -408,6 +408,10 @@ unsupported-provider, and malformed-response failures are terminal. Import
 idempotency makes a crash after provider import but before run completion safe to replay.
 Disabling a schedule prevents future materialization but does not cancel an already
 queued or running audit record.
+
+Scheduler delivery is at-least-once. Deterministic synchronization keys make replay
+safe through the existing import-batch idempotency contract, but MacroVision does not
+claim exactly-once execution.
 
 Scheduler controls are configured through:
 

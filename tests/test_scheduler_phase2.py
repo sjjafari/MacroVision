@@ -1,3 +1,4 @@
+import signal
 from collections.abc import Generator
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -887,3 +888,37 @@ def test_scheduler_key_and_daily_cadence_boundaries() -> None:
         )
     with pytest.raises(ValueError):
         generate_sync_idempotency_key("not-a-sha256")
+
+
+def test_long_running_worker_exits_after_graceful_shutdown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from macrovision import scheduler_worker
+
+    callbacks: dict[int, Any] = {}
+
+    class ShutdownEvent:
+        stopped = False
+
+        def set(self) -> None:
+            self.stopped = True
+
+        def wait(self, timeout: int) -> bool:
+            assert timeout == 1
+            callbacks[signal.SIGINT](0, None)
+            return self.stopped
+
+    monkeypatch.setattr(scheduler_worker, "Event", ShutdownEvent)
+    monkeypatch.setattr(scheduler_worker, "verify_database", lambda _: None)
+    monkeypatch.setattr(scheduler_worker, "run_cycle", lambda **_: 0)
+    monkeypatch.setattr(
+        signal,
+        "signal",
+        lambda signal_number, callback: callbacks.setdefault(
+            cast(int, signal_number),
+            callback,
+        ),
+    )
+
+    assert scheduler_worker.main(["--poll-seconds", "1", "--worker-id", "shutdown-test"]) == 0
+    assert signal.SIGINT in callbacks

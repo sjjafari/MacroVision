@@ -76,3 +76,8 @@ jobs:
           assert not remaining, f"PostgreSQL enum types survived downgrade: {sorted(remaining)}"
           PY
           alembic upgrade head
+      - name: PostgreSQL scheduler locking and partial index
+        env:
+          MACROVISION_DATABASE_URL: postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
+          MACROVISION_POSTGRES_TEST_URL: postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
+        run: pytest -q tests/test_scheduler_postgresql.py --no-cov
