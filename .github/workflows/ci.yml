@@ -82,4 +82,5 @@ jobs:
           MACROVISION_POSTGRES_TEST_URL: postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
         run: >-
           pytest -q tests/test_scheduler_postgresql.py
-          tests/test_analytics_postgresql.py --no-cov
+          tests/test_analytics_postgresql.py
+          tests/test_analytics_concurrency.py --no-cov
