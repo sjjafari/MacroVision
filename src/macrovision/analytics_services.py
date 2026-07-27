@@ -153,6 +153,12 @@ class PreparedDefinition:
     frequency: DataFrequency
 
 
+@dataclass(frozen=True)
+class AnalyticsExecutionOutcome:
+    run: AnalyticsRun
+    disposition: str
+
+
 _PARAMETERS_ADAPTER: TypeAdapter[TransformationParameters] = TypeAdapter(TransformationParameters)
 
 
@@ -612,10 +618,10 @@ def _persist_failed_run(
     session.commit()
 
 
-def execute_analytics_run(
+def execute_analytics_run_outcome(
     session: Session,
     request: AnalyticsExecutionRequest,
-) -> AnalyticsRun:
+) -> AnalyticsExecutionOutcome:
     """Resolve one database snapshot, execute, and atomically persist its output graph."""
 
     prepared: PreparedDefinition | None = None
@@ -641,7 +647,7 @@ def execute_analytics_run(
         )
         if active is not None:
             session.rollback()
-            return active
+            return AnalyticsExecutionOutcome(active, "active_existing")
         started_at = datetime.now(UTC)
         run = AnalyticsRun(
             definition_version=prepared.version,
@@ -685,7 +691,7 @@ def execute_analytics_run(
             session.rollback()
             winner = session.get(AnalyticsRun, reusable_id)
             assert winner is not None
-            return winner
+            return AnalyticsExecutionOutcome(winner, "completed_existing")
         present, missing, lineage_count = _persist_outputs(session, run, prepared, resolved)
         completed_at = max(datetime.now(UTC), started_at)
         run.inputs_examined = inputs_examined
@@ -699,7 +705,7 @@ def execute_analytics_run(
         run.error_code = None
         run.error_message = None
         session.commit()
-        return run
+        return AnalyticsExecutionOutcome(run, "created")
     except (KeyboardInterrupt, SystemExit, GeneratorExit):
         session.rollback()
         raise
@@ -715,7 +721,7 @@ def execute_analytics_run(
                 .order_by(AnalyticsRun.id)
             )
             if active is not None:
-                return active
+                return AnalyticsExecutionOutcome(active, "active_existing")
         if prepared is not None and cutoff is not None and "resolved" in locals():
             semantic = _digest(
                 _snapshot_payload(
@@ -733,7 +739,7 @@ def execute_analytics_run(
                 )
             )
             if winner is not None:
-                return winner
+                return AnalyticsExecutionOutcome(winner, "completed_existing")
         raise AnalyticsConflictError("Concurrent analytics execution conflict") from exc
     except Exception as exc:
         session.rollback()
@@ -756,3 +762,12 @@ def execute_analytics_run(
         if isinstance(exc, AnalyticsServiceError):
             raise
         raise AnalyticsExecutionError("Analytics execution failed") from exc
+
+
+def execute_analytics_run(
+    session: Session,
+    request: AnalyticsExecutionRequest,
+) -> AnalyticsRun:
+    """Preserve the Phase 2B internal API while exposing safe HTTP disposition data."""
+
+    return execute_analytics_run_outcome(session, request).run

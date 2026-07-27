@@ -478,3 +478,59 @@ dependency and set `MACROVISION_DATABASE_URL`, for example:
 ```text
 postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
 ```
+
+## Macro Analytics API development (v0.7)
+
+MacroVision v0.7 is under development. The development branch exposes strict definition
+management, immutable semantic versions, synchronous execution, exact persisted run
+reads, derived observations, historical knowledge-cutoff reads, and point-level lineage
+under `/api/v1`. The released package remains `0.6.0`.
+
+Create a safe synthetic definition:
+
+```powershell
+$definition = @{
+  code = "RESEARCH.CPI.CHANGE"
+  title = "Synthetic CPI change"
+  enabled = $true
+  initial_version = @{
+    parameters = @{ transformation_type = "difference" }
+    inputs = @(@{ alias = "value"; source_series_id = 1 })
+    change_note = "Initial research definition"
+  }
+} | ConvertTo-Json -Depth 6
+
+Invoke-RestMethod -Method Post `
+  -Uri http://127.0.0.1:8000/api/v1/derived-series `
+  -ContentType application/json `
+  -Body $definition
+```
+
+Run it synchronously over a bounded range:
+
+```powershell
+$run = @{
+  requested_start_at = "2023-01-01T00:00:00Z"
+  requested_end_at = "2023-06-30T00:00:00Z"
+  as_of = "2024-01-01T00:00:00Z"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post `
+  -Uri http://127.0.0.1:8000/api/v1/derived-series/1/runs `
+  -ContentType application/json `
+  -Body $run
+```
+
+Execution returns `201` for a newly completed run, `200` for a reusable completed
+result, or `202` for an existing active request. GET endpoints only read persisted
+results: they never calculate, stitch runs, resample, fill, interpolate, call a provider,
+or trigger a scheduler.
+
+The offline benchmark is available with:
+
+```powershell
+python -m macrovision.analytics_benchmark --json
+```
+
+There is no Analytics worker, automatic recomputation, scheduler integration, or
+derived-to-derived dependency support in this phase.
