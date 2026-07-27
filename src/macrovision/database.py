@@ -1,4 +1,6 @@
 from collections.abc import Generator
+from datetime import UTC, datetime
+from typing import Any, cast
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.engine.interfaces import DBAPIConnection
@@ -23,6 +25,14 @@ def _enable_sqlite_foreign_keys(dbapi_connection: DBAPIConnection, _: Connection
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
+    cast(Any, dbapi_connection).create_function(
+        "macrovision_utc_now", 0, _sqlite_utc_now, deterministic=False
+    )
+
+
+def _sqlite_utc_now() -> str:
+    """Return a precise canonical UTC value without floating-point time arithmetic."""
+    return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
 
 
 def create_database_engine(database_url: str) -> Engine:
