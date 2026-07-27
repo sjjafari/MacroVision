@@ -740,7 +740,7 @@ def test_analytics_openapi_inventory_and_privacy(client: TestClient) -> None:
         "/api/v1/derived-series/{definition_id}/versions/{version_number}",
     }
     assert actual == expected
-    assert payload["info"]["version"] == "0.6.0"
+    assert payload["info"]["version"] == "0.7.0"
     _assert_private_fields_absent(payload)
     rendered = str(payload)
     assert "formula" not in rendered.lower()
