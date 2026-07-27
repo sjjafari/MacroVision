@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
@@ -34,11 +35,15 @@ class TransformationType(StrEnum):
 
 
 def canonical_code(value: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Derived-series code must be a string")
     try:
-        normalized = value.upper()
-        normalized.encode("ascii")
-    except (AttributeError, UnicodeEncodeError) as exc:
+        value.encode("ascii")
+    except UnicodeEncodeError as exc:
         raise ValueError("Derived-series code must contain ASCII characters only") from exc
+    normalized = value.upper()
+    if re.fullmatch(DERIVED_CODE_PATTERN, normalized) is None:
+        raise ValueError("Derived-series code has an invalid format")
     return normalized
 
 

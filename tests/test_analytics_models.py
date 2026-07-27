@@ -253,6 +253,69 @@ def test_run_range_counters_and_reusable_status_checks(db_session: Session) -> N
         db_session.commit()
 
 
+@pytest.mark.parametrize(
+    ("status", "started", "completed", "snapshot", "reusable", "error_code", "error_message"),
+    [
+        ("pending", NOW, None, None, None, None, None),
+        ("running", None, None, None, None, None, None),
+        ("succeeded", NOW, NOW, FP_B, None, None, None),
+        ("failed", NOW, NOW, FP_B, None, None, None),
+    ],
+)
+def test_run_lifecycle_shapes_are_database_enforced(
+    db_session: Session,
+    status: str,
+    started: datetime | None,
+    completed: datetime | None,
+    snapshot: str | None,
+    reusable: str | None,
+    error_code: str | None,
+    error_message: str | None,
+) -> None:
+    _, version, _ = seed_graph(db_session)
+    run = make_run(version)
+    run.status = status
+    run.started_at = started
+    run.completed_at = completed
+    run.snapshot_fingerprint = snapshot
+    run.reusable_fingerprint = reusable
+    run.error_code = error_code
+    run.error_message = error_message
+    db_session.add(run)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+
+def test_observation_run_definition_mismatch_is_rejected(db_session: Session) -> None:
+    definition, version, _ = seed_graph(db_session)
+    other_version = DerivedSeriesDefinitionVersion(
+        definition=definition,
+        version=2,
+        transformation_type="difference",
+        parameters={"transformation_type": "difference"},
+        parameters_fingerprint=FP_B,
+        output_unit="index",
+        output_frequency="monthly",
+        output_geography="US",
+        output_seasonal_adjustment="adjusted",
+        engine_contract_version="1",
+    )
+    run = make_run(version)
+    db_session.add_all([other_version, run])
+    db_session.flush()
+    db_session.add(
+        DerivedObservation(
+            run_id=run.id,
+            definition_version_id=other_version.id,
+            observed_at=NOW,
+            value=Decimal("1"),
+            status="present",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+
 def test_terminal_run_immutability_but_pending_transition_is_allowed(
     db_session: Session,
 ) -> None:
@@ -437,6 +500,48 @@ def test_invalid_lineage_shape_and_lineage_immutability(db_session: Session) -> 
     valid.lineage_position = 1
     with pytest.raises(ValueError, match="immutable"):
         db_session.commit()
+
+
+def test_revision_lineage_cannot_reference_another_observation(
+    db_session: Session,
+) -> None:
+    _, version, series = seed_graph(db_session)
+    source, revision = _source_versions(db_session, series)
+    other_source = DataObservation(
+        series=series,
+        observed_at=NOW.replace(month=6),
+        publication_timestamp=NOW,
+        ingestion_timestamp=NOW,
+        value=Decimal("3"),
+        status=ObservationStatus.present,
+        provider_metadata={},
+    )
+    run = make_run(version)
+    derived = DerivedObservation(
+        run=run,
+        definition_version=version,
+        observed_at=NOW,
+        value=Decimal("2"),
+        status="present",
+    )
+    db_session.add_all([other_source, run, derived])
+    db_session.flush()
+    db_session.add(
+        DerivedObservationLineage(
+            derived_observation_id=derived.id,
+            input_position=0,
+            source_observation_id=other_source.id,
+            source_revision_id=revision.id,
+            source_version_kind="revision",
+            source_version_id=revision.id,
+            lineage_position=0,
+            source_knowledge_timestamp=NOW,
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+    assert source.id != other_source.id
 
 
 def test_all_analytics_foreign_keys_are_restrict(db_session: Session) -> None:

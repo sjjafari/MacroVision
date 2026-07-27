@@ -101,6 +101,27 @@ def test_alembic_schema_has_stabilization_constraints(migrated_engine: Engine) -
     run_indexes = {item["name"]: item for item in schema.get_indexes("analytics_runs")}
     assert run_indexes["uq_analytics_run_active_request"]["unique"]
     assert run_indexes["uq_analytics_run_reusable"]["unique"]
+    run_uniques = {item["name"]: item for item in schema.get_unique_constraints("analytics_runs")}
+    assert run_uniques["uq_analytics_run_id_definition_version"]["column_names"] == [
+        "id",
+        "definition_version_id",
+    ]
+    revision_indexes = {item["name"]: item for item in schema.get_indexes("data_revisions")}
+    assert revision_indexes["uq_data_revision_id_observation"]["unique"]
+    observation_fks = {
+        item["name"]: item for item in schema.get_foreign_keys("derived_observations")
+    }
+    assert observation_fks["fk_derived_observation_run_definition"]["constrained_columns"] == [
+        "run_id",
+        "definition_version_id",
+    ]
+    lineage_fks = {
+        item["name"]: item for item in schema.get_foreign_keys("derived_observation_lineage")
+    }
+    assert lineage_fks["fk_derived_lineage_revision_observation"]["constrained_columns"] == [
+        "source_revision_id",
+        "source_observation_id",
+    ]
     lineage_uniques = {
         item["name"]: item for item in schema.get_unique_constraints("derived_observation_lineage")
     }
@@ -414,7 +435,10 @@ def test_analytics_schema_compiles_for_postgresql_without_native_enums() -> None
     )
     assert "ck_derived_definition_code" in definitions
     assert "ck_analytics_run_request_fingerprint" in runs
+    assert "ck_analytics_run_lifecycle_shape" in runs
+    assert "uq_analytics_run_id_definition_version" in runs
     assert "ck_derived_lineage_source_shape" in lineage
+    assert "fk_derived_lineage_revision_observation" in lineage
     assert "CREATE TYPE" not in definitions + runs + lineage
     migration = Path("migrations/versions/20260726_0009_macro_analytics_phase_2a.py").read_text(
         encoding="utf-8"

@@ -287,6 +287,24 @@ def upgrade() -> None:
             "error_message IS NULL OR LENGTH(error_message) <= 500",
             name="ck_analytics_run_error_message",
         ),
+        sa.CheckConstraint(
+            "(status = 'pending' AND started_at IS NULL AND completed_at IS NULL "
+            "AND snapshot_fingerprint IS NULL AND reusable_fingerprint IS NULL "
+            "AND error_code IS NULL AND error_message IS NULL) OR "
+            "(status = 'running' AND started_at IS NOT NULL AND completed_at IS NULL "
+            "AND reusable_fingerprint IS NULL AND error_code IS NULL AND error_message IS NULL) OR "
+            "(status = 'succeeded' AND started_at IS NOT NULL AND completed_at IS NOT NULL "
+            "AND snapshot_fingerprint IS NOT NULL AND reusable_fingerprint IS NOT NULL "
+            "AND error_code IS NULL AND error_message IS NULL) OR "
+            "(status = 'failed' AND completed_at IS NOT NULL "
+            "AND reusable_fingerprint IS NULL AND error_code IS NOT NULL "
+            "AND error_message IS NOT NULL)",
+            name="ck_analytics_run_lifecycle_shape",
+        ),
+        sa.CheckConstraint(
+            "started_at IS NULL OR completed_at IS NULL OR completed_at >= started_at",
+            name="ck_analytics_run_completion_order",
+        ),
         sa.ForeignKeyConstraint(
             ["definition_version_id"],
             ["derived_series_definition_versions.id"],
@@ -294,6 +312,11 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(["retry_of_run_id"], ["analytics_runs.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "id",
+            "definition_version_id",
+            name="uq_analytics_run_id_definition_version",
+        ),
     )
     op.create_index(
         "ix_analytics_run_definition_created",
@@ -350,7 +373,12 @@ def upgrade() -> None:
             ["derived_series_definition_versions.id"],
             ondelete="RESTRICT",
         ),
-        sa.ForeignKeyConstraint(["run_id"], ["analytics_runs.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["run_id", "definition_version_id"],
+            ["analytics_runs.id", "analytics_runs.definition_version_id"],
+            ondelete="RESTRICT",
+            name="fk_derived_observation_run_definition",
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("run_id", "observed_at", name="uq_derived_observation_run_time"),
     )
@@ -363,6 +391,13 @@ def upgrade() -> None:
         "ix_derived_observation_run_time",
         "derived_observations",
         ["run_id", "observed_at", "id"],
+    )
+
+    op.create_index(
+        "uq_data_revision_id_observation",
+        "data_revisions",
+        ["id", "observation_id"],
+        unique=True,
     )
 
     op.create_table(
@@ -395,7 +430,12 @@ def upgrade() -> None:
             ["data_observations.id"],
             ondelete="RESTRICT",
         ),
-        sa.ForeignKeyConstraint(["source_revision_id"], ["data_revisions.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["source_revision_id", "source_observation_id"],
+            ["data_revisions.id", "data_revisions.observation_id"],
+            ondelete="RESTRICT",
+            name="fk_derived_lineage_revision_observation",
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "derived_observation_id",
@@ -428,6 +468,7 @@ def downgrade() -> None:
     op.drop_index("ix_derived_lineage_source_revision", table_name="derived_observation_lineage")
     op.drop_index("ix_derived_lineage_source_observation", table_name="derived_observation_lineage")
     op.drop_table("derived_observation_lineage")
+    op.drop_index("uq_data_revision_id_observation", table_name="data_revisions")
     op.drop_index("ix_derived_observation_run_time", table_name="derived_observations")
     op.drop_index("ix_derived_observation_definition_time", table_name="derived_observations")
     op.drop_table("derived_observations")

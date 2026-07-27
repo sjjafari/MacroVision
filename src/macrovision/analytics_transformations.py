@@ -60,6 +60,14 @@ class MissingReason(StrEnum):
     numeric_overflow = "numeric_overflow"
 
 
+class HistoryStrategy(StrEnum):
+    current_point = "current_point"
+    previous_period = "previous_period"
+    year_over_year = "year_over_year"
+    rolling_window = "rolling_window"
+    exact_rebase_timestamp = "exact_rebase_timestamp"
+
+
 @dataclass(frozen=True)
 class PointValue:
     state: InputState
@@ -94,6 +102,7 @@ class TransformationSpec:
     arity: int
     ordered_aliases: tuple[str, ...]
     parameter_contract: ParameterContract
+    history_strategy: HistoryStrategy
     required_history: Callable[[TransformationParameters], int]
     validate_metadata: Callable[[Sequence[InputMetadata]], OutputMetadata]
     evaluate: Evaluator
@@ -186,22 +195,27 @@ def year_over_year_anchor(value: datetime, frequency: DataFrequency) -> datetime
     raise AnalyticsContractError("Irregular frequency is not supported")
 
 
-def _missing(points: Sequence[PointValue], expected: int) -> MissingReason | None:
+def _effective_window(
+    points: Sequence[PointValue], expected: int
+) -> tuple[tuple[PointValue, ...] | None, MissingReason | None]:
     if len(points) < expected:
-        return MissingReason.insufficient_history
-    if any(point.state is InputState.absent for point in points):
-        return MissingReason.timestamp_absent
-    if any(point.state is InputState.missing for point in points):
-        return MissingReason.source_missing
-    return None
+        return None, MissingReason.insufficient_history
+    selected = tuple(points[-expected:])
+    if any(point.state is InputState.absent for point in selected):
+        return None, MissingReason.timestamp_absent
+    if any(point.state is InputState.missing for point in selected):
+        return None, MissingReason.source_missing
+    return selected, None
 
 
 def _present(value: Decimal) -> TransformationResult:
+    if not value.is_finite():
+        return TransformationResult(None, MissingReason.non_finite_result)
     try:
         with localcontext(ANALYTICS_CONTEXT):
             quantized = value.quantize(OUTPUT_QUANTUM, rounding=ROUND_HALF_EVEN)
     except (InvalidOperation, Overflow):
-        return TransformationResult(None, MissingReason.non_finite_result)
+        return TransformationResult(None, MissingReason.numeric_overflow)
     if not quantized.is_finite():
         return TransformationResult(None, MissingReason.non_finite_result)
     if quantized < MIN_OUTPUT or quantized > MAX_OUTPUT:
@@ -214,19 +228,21 @@ def _values(points: Sequence[PointValue]) -> list[Decimal]:
 
 
 def _difference(inputs: InputWindows, _: TransformationParameters) -> TransformationResult:
-    reason = _missing(inputs[0], 2)
+    points, reason = _effective_window(inputs[0], 2)
     if reason:
         return TransformationResult(None, reason)
-    values = _values(inputs[0])
+    assert points is not None
+    values = _values(points)
     with localcontext(ANALYTICS_CONTEXT):
         return _present(values[-1] - values[-2])
 
 
 def _percent_change(inputs: InputWindows, _: TransformationParameters) -> TransformationResult:
-    reason = _missing(inputs[0], 2)
+    points, reason = _effective_window(inputs[0], 2)
     if reason:
         return TransformationResult(None, reason)
-    previous, current = _values(inputs[0])[-2:]
+    assert points is not None
+    previous, current = _values(points)
     if previous == 0:
         return TransformationResult(None, MissingReason.division_by_zero)
     with localcontext(ANALYTICS_CONTEXT):
@@ -235,7 +251,7 @@ def _percent_change(inputs: InputWindows, _: TransformationParameters) -> Transf
 
 def _ratio(inputs: InputWindows, _: TransformationParameters) -> TransformationResult:
     for points in inputs:
-        reason = _missing(points, 1)
+        _selected, reason = _effective_window(points, 1)
         if reason:
             return TransformationResult(None, reason)
     numerator, denominator = (_values(points)[-1] for points in inputs)
@@ -247,7 +263,7 @@ def _ratio(inputs: InputWindows, _: TransformationParameters) -> TransformationR
 
 def _spread(inputs: InputWindows, _: TransformationParameters) -> TransformationResult:
     for points in inputs:
-        reason = _missing(points, 1)
+        _selected, reason = _effective_window(points, 1)
         if reason:
             return TransformationResult(None, reason)
     minuend, subtrahend = (_values(points)[-1] for points in inputs)
@@ -284,30 +300,33 @@ def _moving_average(
     inputs: InputWindows, parameters: TransformationParameters
 ) -> TransformationResult:
     window = _window(parameters)
-    reason = _missing(inputs[0], window)
+    points, reason = _effective_window(inputs[0], window)
     if reason:
         return TransformationResult(None, reason)
-    return _present(_mean(_values(inputs[0])[-window:]))
+    assert points is not None
+    return _present(_mean(_values(points)))
 
 
 def _rolling_stddev(
     inputs: InputWindows, parameters: TransformationParameters
 ) -> TransformationResult:
     window = _window(parameters)
-    reason = _missing(inputs[0], window)
+    points, reason = _effective_window(inputs[0], window)
     if reason:
         return TransformationResult(None, reason)
-    return _present(_population_stddev(_values(inputs[0])[-window:]))
+    assert points is not None
+    return _present(_population_stddev(_values(points)))
 
 
 def _rolling_z_score(
     inputs: InputWindows, parameters: TransformationParameters
 ) -> TransformationResult:
     window = _window(parameters)
-    reason = _missing(inputs[0], window)
+    points, reason = _effective_window(inputs[0], window)
     if reason:
         return TransformationResult(None, reason)
-    values = _values(inputs[0])[-window:]
+    assert points is not None
+    values = _values(points)
     deviation = _population_stddev(values)
     if deviation == 0:
         return TransformationResult(None, MissingReason.division_by_zero)
@@ -325,7 +344,7 @@ def _rebase(inputs: InputWindows, parameters: TransformationParameters) -> Trans
         raise AnalyticsContractError("The exact rebase base point must be present")
     if base.value == 0:
         raise AnalyticsContractError("The exact rebase base point cannot be zero")
-    reason = _missing((current,), 1)
+    _, reason = _effective_window((current,), 1)
     if reason:
         return TransformationResult(None, reason)
     assert base.value is not None and current.value is not None
@@ -401,6 +420,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         1,
         ("value",),
         NoParameters,
+        HistoryStrategy.previous_period,
         _history_one,
         _unary_preserve,
         _difference,
@@ -410,6 +430,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         1,
         ("value",),
         NoParameters,
+        HistoryStrategy.previous_period,
         _history_one,
         _percent_metadata,
         _percent_change,
@@ -419,6 +440,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         1,
         ("value",),
         NoParameters,
+        HistoryStrategy.year_over_year,
         _history_one,
         _percent_metadata,
         _percent_change,
@@ -428,6 +450,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         2,
         ("numerator", "denominator"),
         NoParameters,
+        HistoryStrategy.current_point,
         _history_none,
         lambda items: _multi_metadata(items, unit="ratio", preserve_currency=False),
         _ratio,
@@ -437,6 +460,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         2,
         ("minuend", "subtrahend"),
         NoParameters,
+        HistoryStrategy.current_point,
         _history_none,
         lambda items: _multi_metadata(items, unit="preserve", preserve_currency=True),
         _spread,
@@ -446,6 +470,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         1,
         ("value",),
         MovingAverageParameters,
+        HistoryStrategy.rolling_window,
         _history_window,
         _unary_preserve,
         _moving_average,
@@ -455,6 +480,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         1,
         ("value",),
         RollingStandardDeviationParameters,
+        HistoryStrategy.rolling_window,
         _history_window,
         _unary_preserve,
         _rolling_stddev,
@@ -464,6 +490,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         1,
         ("value",),
         RollingZScoreParameters,
+        HistoryStrategy.rolling_window,
         _history_window,
         lambda items: _single_metadata(items, "z_score", True),
         _rolling_z_score,
@@ -473,6 +500,7 @@ REGISTRY: dict[TransformationType, TransformationSpec] = {
         1,
         ("value",),
         RebaseIndexParameters,
+        HistoryStrategy.exact_rebase_timestamp,
         _history_none,
         lambda items: _single_metadata(items, "index", True),
         _rebase,
@@ -487,6 +515,40 @@ def get_transformation_spec(
         return REGISTRY[TransformationType(transformation_type)]
     except (ValueError, KeyError) as exc:
         raise AnalyticsContractError("Unknown analytics transformation") from exc
+
+
+def required_timestamps(
+    spec: TransformationSpec,
+    current_timestamp: datetime,
+    frequency: DataFrequency,
+    parameters: TransformationParameters,
+) -> tuple[datetime, ...] | None:
+    if current_timestamp.tzinfo is None or current_timestamp.utcoffset() is None:
+        raise AnalyticsContractError("Current timestamp must be timezone-aware")
+    current = current_timestamp.astimezone(UTC)
+    if frequency is DataFrequency.irregular:
+        raise AnalyticsContractError("Irregular frequency is not supported")
+    if spec.history_strategy is HistoryStrategy.current_point:
+        return (current,)
+    if spec.history_strategy is HistoryStrategy.previous_period:
+        anchor = previous_period_anchor(current, frequency)
+        return None if anchor is None else (anchor, current)
+    if spec.history_strategy is HistoryStrategy.year_over_year:
+        anchor = year_over_year_anchor(current, frequency)
+        return None if anchor is None else (anchor, current)
+    if spec.history_strategy is HistoryStrategy.rolling_window:
+        timestamps = [current]
+        for _ in range(_window(parameters) - 1):
+            anchor = previous_period_anchor(timestamps[-1], frequency)
+            if anchor is None:
+                return None
+            timestamps.append(anchor)
+        return tuple(reversed(timestamps))
+    if spec.history_strategy is HistoryStrategy.exact_rebase_timestamp:
+        if not isinstance(parameters, RebaseIndexParameters):
+            raise AnalyticsContractError("rebase_index requires rebase parameters")
+        return (parameters.base_timestamp.astimezone(UTC), current)
+    raise AnalyticsContractError("Unsupported history strategy")
 
 
 def validate_ordered_inputs(

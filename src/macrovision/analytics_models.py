@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -297,10 +298,19 @@ class AnalyticsRun(Base):
     definition_version: Mapped[DerivedSeriesDefinitionVersion] = relationship(back_populates="runs")
     retry_of: Mapped["AnalyticsRun | None"] = relationship(remote_side="AnalyticsRun.id")
     observations: Mapped[list["DerivedObservation"]] = relationship(
-        back_populates="run", cascade="save-update, merge", passive_deletes="all"
+        back_populates="run",
+        cascade="save-update, merge",
+        passive_deletes="all",
+        foreign_keys="[DerivedObservation.run_id, DerivedObservation.definition_version_id]",
+        overlaps="definition_version",
     )
 
     __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "definition_version_id",
+            name="uq_analytics_run_id_definition_version",
+        ),
         CheckConstraint(
             "status IN ('pending','running','succeeded','failed')",
             name="ck_analytics_run_status",
@@ -345,6 +355,24 @@ class AnalyticsRun(Base):
             "error_message IS NULL OR LENGTH(error_message) <= 500",
             name="ck_analytics_run_error_message",
         ),
+        CheckConstraint(
+            "(status = 'pending' AND started_at IS NULL AND completed_at IS NULL "
+            "AND snapshot_fingerprint IS NULL AND reusable_fingerprint IS NULL "
+            "AND error_code IS NULL AND error_message IS NULL) OR "
+            "(status = 'running' AND started_at IS NOT NULL AND completed_at IS NULL "
+            "AND reusable_fingerprint IS NULL AND error_code IS NULL AND error_message IS NULL) OR "
+            "(status = 'succeeded' AND started_at IS NOT NULL AND completed_at IS NOT NULL "
+            "AND snapshot_fingerprint IS NOT NULL AND reusable_fingerprint IS NOT NULL "
+            "AND error_code IS NULL AND error_message IS NULL) OR "
+            "(status = 'failed' AND completed_at IS NOT NULL "
+            "AND reusable_fingerprint IS NULL AND error_code IS NOT NULL "
+            "AND error_message IS NOT NULL)",
+            name="ck_analytics_run_lifecycle_shape",
+        ),
+        CheckConstraint(
+            "started_at IS NULL OR completed_at IS NULL OR completed_at >= started_at",
+            name="ck_analytics_run_completion_order",
+        ),
         Index(
             "ix_analytics_run_definition_created",
             "definition_version_id",
@@ -374,7 +402,7 @@ class DerivedObservation(Base):
     __tablename__ = "derived_observations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    run_id: Mapped[int] = mapped_column(ForeignKey("analytics_runs.id", ondelete="RESTRICT"))
+    run_id: Mapped[int] = mapped_column(Integer)
     definition_version_id: Mapped[int] = mapped_column(
         ForeignKey("derived_series_definition_versions.id", ondelete="RESTRICT")
     )
@@ -384,8 +412,15 @@ class DerivedObservation(Base):
     missing_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), server_default=func.now())
 
-    run: Mapped[AnalyticsRun] = relationship(back_populates="observations")
-    definition_version: Mapped[DerivedSeriesDefinitionVersion] = relationship()
+    run: Mapped[AnalyticsRun] = relationship(
+        back_populates="observations",
+        foreign_keys=[run_id, definition_version_id],
+        overlaps="definition_version",
+    )
+    definition_version: Mapped[DerivedSeriesDefinitionVersion] = relationship(
+        foreign_keys=[definition_version_id],
+        overlaps="observations,run",
+    )
     lineage: Mapped[list["DerivedObservationLineage"]] = relationship(
         back_populates="derived_observation",
         cascade="save-update, merge",
@@ -393,6 +428,12 @@ class DerivedObservation(Base):
     )
 
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["run_id", "definition_version_id"],
+            ["analytics_runs.id", "analytics_runs.definition_version_id"],
+            ondelete="RESTRICT",
+            name="fk_derived_observation_run_definition",
+        ),
         UniqueConstraint("run_id", "observed_at", name="uq_derived_observation_run_time"),
         CheckConstraint(
             "(status = 'present' AND value IS NOT NULL AND missing_reason IS NULL) OR "
@@ -422,19 +463,29 @@ class DerivedObservationLineage(Base):
     source_observation_id: Mapped[int] = mapped_column(
         ForeignKey("data_observations.id", ondelete="RESTRICT")
     )
-    source_revision_id: Mapped[int | None] = mapped_column(
-        ForeignKey("data_revisions.id", ondelete="RESTRICT"), nullable=True
-    )
+    source_revision_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_version_kind: Mapped[str] = mapped_column(String(16))
     source_version_id: Mapped[int]
     lineage_position: Mapped[int]
     source_knowledge_timestamp: Mapped[datetime] = mapped_column(UTCDateTime())
 
     derived_observation: Mapped[DerivedObservation] = relationship(back_populates="lineage")
-    source_observation: Mapped[DataObservation] = relationship()
-    source_revision: Mapped[DataRevision | None] = relationship()
+    source_observation: Mapped[DataObservation] = relationship(
+        foreign_keys=[source_observation_id],
+        overlaps="source_revision",
+    )
+    source_revision: Mapped[DataRevision | None] = relationship(
+        foreign_keys=[source_revision_id, source_observation_id],
+        overlaps="source_observation",
+    )
 
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["source_revision_id", "source_observation_id"],
+            ["data_revisions.id", "data_revisions.observation_id"],
+            ondelete="RESTRICT",
+            name="fk_derived_lineage_revision_observation",
+        ),
         UniqueConstraint(
             "derived_observation_id",
             "input_position",

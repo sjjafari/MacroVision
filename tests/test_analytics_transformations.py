@@ -16,6 +16,7 @@ from macrovision.analytics_schemas import (
 from macrovision.analytics_transformations import (
     REGISTRY,
     AnalyticsContractError,
+    HistoryStrategy,
     InputState,
     MissingReason,
     PointValue,
@@ -25,6 +26,7 @@ from macrovision.analytics_transformations import (
     get_transformation_spec,
     parameters_fingerprint,
     previous_period_anchor,
+    required_timestamps,
     year_over_year_anchor,
 )
 from macrovision.macro_data_models import DataFrequency, SeasonalAdjustment
@@ -143,6 +145,101 @@ def test_overflow_and_half_even_rounding_are_deterministic() -> None:
     )
     assert overflow.missing_reason is MissingReason.numeric_overflow
     assert rounded.value == Decimal("0.00000001")
+    extreme = evaluate_transformation(
+        no_params(TransformationType.difference),
+        ((point("0"), point("1E+999999")),),
+    )
+    assert extreme.missing_reason is MissingReason.numeric_overflow
+
+
+def test_only_effective_tail_controls_missingness() -> None:
+    difference = evaluate_transformation(
+        no_params(TransformationType.difference),
+        ((PointValue(M), PointValue(A), point("4"), point("7")),),
+    )
+    average = evaluate_transformation(
+        MovingAverageParameters(transformation_type="moving_average", window=2),
+        ((PointValue(M), point("2"), point("4")),),
+    )
+    assert difference.value == Decimal("3.00000000")
+    assert average.value == Decimal("3.00000000")
+
+
+def test_registry_history_strategies_and_required_timestamp_anchors() -> None:
+    current = datetime(2026, 3, 31, tzinfo=UTC)
+    expected = {
+        TransformationType.difference: HistoryStrategy.previous_period,
+        TransformationType.percent_change: HistoryStrategy.previous_period,
+        TransformationType.year_over_year_percent_change: HistoryStrategy.year_over_year,
+        TransformationType.ratio: HistoryStrategy.current_point,
+        TransformationType.spread: HistoryStrategy.current_point,
+        TransformationType.moving_average: HistoryStrategy.rolling_window,
+        TransformationType.rolling_standard_deviation: HistoryStrategy.rolling_window,
+        TransformationType.rolling_z_score: HistoryStrategy.rolling_window,
+        TransformationType.rebase_index: HistoryStrategy.exact_rebase_timestamp,
+    }
+    assert {kind: spec.history_strategy for kind, spec in REGISTRY.items()} == expected
+    ratio = no_params(TransformationType.ratio)
+    assert required_timestamps(
+        REGISTRY[TransformationType.ratio], current, DataFrequency.monthly, ratio
+    ) == (current,)
+    rolling = MovingAverageParameters(transformation_type="moving_average", window=3)
+    assert required_timestamps(
+        REGISTRY[TransformationType.moving_average],
+        datetime(2026, 3, 15, tzinfo=UTC),
+        DataFrequency.monthly,
+        rolling,
+    ) == (
+        datetime(2026, 1, 15, tzinfo=UTC),
+        datetime(2026, 2, 15, tzinfo=UTC),
+        datetime(2026, 3, 15, tzinfo=UTC),
+    )
+    rebase = RebaseIndexParameters(
+        transformation_type="rebase_index",
+        base_timestamp=datetime(2020, 1, 1, tzinfo=UTC),
+    )
+    assert required_timestamps(
+        REGISTRY[TransformationType.rebase_index],
+        current,
+        DataFrequency.monthly,
+        rebase,
+    ) == (datetime(2020, 1, 1, tzinfo=UTC), current)
+    mid_month = datetime(2026, 3, 15, tzinfo=UTC)
+    assert required_timestamps(
+        REGISTRY[TransformationType.difference],
+        mid_month,
+        DataFrequency.monthly,
+        no_params(TransformationType.difference),
+    ) == (datetime(2026, 2, 15, tzinfo=UTC), mid_month)
+    assert required_timestamps(
+        REGISTRY[TransformationType.year_over_year_percent_change],
+        mid_month,
+        DataFrequency.monthly,
+        no_params(TransformationType.year_over_year_percent_change),
+    ) == (datetime(2025, 3, 15, tzinfo=UTC), mid_month)
+    assert (
+        required_timestamps(
+            REGISTRY[TransformationType.difference],
+            current,
+            DataFrequency.monthly,
+            no_params(TransformationType.difference),
+        )
+        is None
+    )
+    with pytest.raises(AnalyticsContractError, match="timezone-aware"):
+        required_timestamps(
+            REGISTRY[TransformationType.ratio],
+            current.replace(tzinfo=None),
+            DataFrequency.monthly,
+            ratio,
+        )
+    with pytest.raises(AnalyticsContractError, match="Irregular"):
+        required_timestamps(
+            REGISTRY[TransformationType.ratio],
+            current,
+            DataFrequency.irregular,
+            ratio,
+        )
 
 
 def test_registry_is_closed_and_validates_arity_and_parameters() -> None:

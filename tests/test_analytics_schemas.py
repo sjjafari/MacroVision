@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from macrovision.analytics_schemas import (
     DerivedSeriesDefinitionCreate,
     RebaseIndexParameters,
+    canonical_code,
 )
 
 
@@ -34,6 +35,14 @@ def test_definition_normalizes_ascii_code_and_validates_registry() -> None:
 def test_definition_rejects_noncanonical_code(code: str) -> None:
     with pytest.raises(ValidationError):
         DerivedSeriesDefinitionCreate.model_validate(_definition(code=code))
+
+
+def test_canonical_code_validates_original_ascii_before_case_conversion() -> None:
+    assert canonical_code("cpi.yoy") == "CPI.YOY"
+    with pytest.raises(ValueError, match="ASCII"):
+        canonical_code("\u017f")
+    with pytest.raises(ValueError, match="string"):
+        canonical_code(7)  # type: ignore[arg-type]
 
 
 def test_strict_contract_rejects_extra_and_arbitrary_formula() -> None:
