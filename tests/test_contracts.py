@@ -128,6 +128,11 @@ def test_every_list_and_history_contract_exposes_shared_pagination(
         assert {"limit", "offset"} <= query_parameters, path
 
 
+def test_phase_2a_does_not_expose_analytics_routes(client: TestClient) -> None:
+    paths = client.get("/openapi.json").json()["paths"]
+    assert not any("derived-series" in path or "analytics-runs" in path for path in paths)
+
+
 def test_legacy_ratios_round_half_even_and_round_trip_exactly(
     client: TestClient, db_session: Session
 ) -> None:

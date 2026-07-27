@@ -59,8 +59,8 @@ schema changes are owned by Alembic rather than application startup.
 
 The proposed vintage-aware, deterministic Macro Analytics Engine is documented in
 [docs/v0.7-macro-analytics-architecture.md](docs/v0.7-macro-analytics-architecture.md).
-This is a planning document only; the current package and production behavior remain
-version 0.6.0.
+Phase 2A persistence and strict transformation contracts are under development, but no
+analytics API is exposed yet. The current package release remains version 0.6.0.
 
 ## Prerequisites
 

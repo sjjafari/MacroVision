@@ -12,6 +12,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.schema import CreateTable
 
 from macrovision import portfolio_schemas, portfolio_services
+from macrovision.analytics_models import (
+    AnalyticsRun,
+    DerivedObservationLineage,
+    DerivedSeriesDefinition,
+)
 from macrovision.config import get_settings
 from macrovision.database import create_database_engine
 from macrovision.macro_data_models import DataObservation, DataSeries
@@ -85,6 +90,48 @@ def test_alembic_schema_has_stabilization_constraints(migrated_engine: Engine) -
     assert "ix_quality_event_issue_time" in quality_indexes
     issue_indexes = {index["name"]: index for index in schema.get_indexes("data_quality_issues")}
     assert bool(issue_indexes["uq_open_stale_issue_per_series"]["unique"])
+    assert {
+        "derived_series_definitions",
+        "derived_series_definition_versions",
+        "derived_series_inputs",
+        "analytics_runs",
+        "derived_observations",
+        "derived_observation_lineage",
+    } <= set(schema.get_table_names())
+    run_indexes = {item["name"]: item for item in schema.get_indexes("analytics_runs")}
+    assert run_indexes["uq_analytics_run_active_request"]["unique"]
+    assert run_indexes["uq_analytics_run_reusable"]["unique"]
+    run_uniques = {item["name"]: item for item in schema.get_unique_constraints("analytics_runs")}
+    assert run_uniques["uq_analytics_run_id_definition_version"]["column_names"] == [
+        "id",
+        "definition_version_id",
+    ]
+    revision_indexes = {item["name"]: item for item in schema.get_indexes("data_revisions")}
+    assert revision_indexes["uq_data_revision_id_observation"]["unique"]
+    observation_fks = {
+        item["name"]: item for item in schema.get_foreign_keys("derived_observations")
+    }
+    assert observation_fks["fk_derived_observation_run_definition"]["constrained_columns"] == [
+        "run_id",
+        "definition_version_id",
+    ]
+    lineage_fks = {
+        item["name"]: item for item in schema.get_foreign_keys("derived_observation_lineage")
+    }
+    assert lineage_fks["fk_derived_lineage_revision_observation"]["constrained_columns"] == [
+        "source_revision_id",
+        "source_observation_id",
+    ]
+    lineage_uniques = {
+        item["name"]: item for item in schema.get_unique_constraints("derived_observation_lineage")
+    }
+    assert lineage_uniques["uq_derived_lineage_version_position"]["column_names"] == [
+        "derived_observation_id",
+        "input_position",
+        "source_version_kind",
+        "source_version_id",
+        "lineage_position",
+    ]
 
 
 def test_legacy_rows_survive_upgrade_to_stabilization(
@@ -354,6 +401,7 @@ def test_provider_provenance_downgrade_and_reupgrade_preserves_observation(
         "20260724_0005",
         "20260724_0006",
         "20260724_0007",
+        "20260724_0008",
     ],
 )
 def test_each_legacy_schema_upgrades_to_head(
@@ -370,7 +418,69 @@ def test_each_legacy_schema_upgrades_to_head(
     engine = create_database_engine(database_url)
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "20260724_0008"
+            "20260726_0009"
         )
+    engine.dispose()
+    get_settings.cache_clear()
+
+
+def test_analytics_schema_compiles_for_postgresql_without_native_enums() -> None:
+    dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
+    definitions = str(
+        CreateTable(cast(Table, DerivedSeriesDefinition.__table__)).compile(dialect=dialect)
+    )
+    runs = str(CreateTable(cast(Table, AnalyticsRun.__table__)).compile(dialect=dialect))
+    lineage = str(
+        CreateTable(cast(Table, DerivedObservationLineage.__table__)).compile(dialect=dialect)
+    )
+    assert "ck_derived_definition_code" in definitions
+    assert "ck_analytics_run_request_fingerprint" in runs
+    assert "ck_analytics_run_lifecycle_shape" in runs
+    assert "uq_analytics_run_id_definition_version" in runs
+    assert "ck_derived_lineage_source_shape" in lineage
+    assert "fk_derived_lineage_revision_observation" in lineage
+    assert "CREATE TYPE" not in definitions + runs + lineage
+    migration = Path("migrations/versions/20260726_0009_macro_analytics_phase_2a.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'down_revision: str | None = "20260724_0008"' in migration
+    assert "current_version_id" not in migration
+    assert "source_definition_version_id" not in migration
+
+
+def test_analytics_migration_downgrade_and_reupgrade_preserves_legacy_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'analytics-cycle.db'}"
+    monkeypatch.setenv("MACROVISION_DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = Config("alembic.ini")
+    command.upgrade(config, "20260724_0008")
+    engine = create_database_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO data_sources (id,code,name,description) "
+                "VALUES (1,'LEGACY','Legacy source','Must survive analytics cycle')"
+            )
+        )
+    engine.dispose()
+    command.upgrade(config, "head")
+    engine = create_database_engine(database_url)
+    with engine.connect() as connection:
+        assert "analytics_runs" in inspect(connection).get_table_names()
+        assert connection.scalar(text("SELECT COUNT(*) FROM data_sources")) == 1
+    engine.dispose()
+    command.downgrade(config, "20260724_0008")
+    engine = create_database_engine(database_url)
+    with engine.connect() as connection:
+        assert "analytics_runs" not in inspect(connection).get_table_names()
+        assert connection.scalar(text("SELECT COUNT(*) FROM data_sources")) == 1
+    engine.dispose()
+    command.upgrade(config, "head")
+    engine = create_database_engine(database_url)
+    with engine.connect() as connection:
+        assert "analytics_runs" in inspect(connection).get_table_names()
+        assert connection.scalar(text("SELECT COUNT(*) FROM data_sources")) == 1
     engine.dispose()
     get_settings.cache_clear()

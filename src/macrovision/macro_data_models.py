@@ -319,6 +319,12 @@ class DataRevision(Base):
 
     __table_args__ = (
         UniqueConstraint("observation_id", "sequence", name="uq_revision_observation_sequence"),
+        Index(
+            "uq_data_revision_id_observation",
+            "id",
+            "observation_id",
+            unique=True,
+        ),
         CheckConstraint("sequence > 0", name="ck_data_revision_sequence"),
         CheckConstraint(
             "(previous_status = 'present' AND previous_value IS NOT NULL) OR "

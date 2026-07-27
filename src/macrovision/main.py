@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 
+from macrovision import analytics_models as analytics_models
 from macrovision.api import router, system_router
 from macrovision.contracts import ErrorResponse
 from macrovision.decision_api import router as decision_router

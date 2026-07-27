@@ -4,6 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from macrovision import (  # noqa: F401
+    analytics_models,
     decision_models,
     macro_data_models,
     models,
