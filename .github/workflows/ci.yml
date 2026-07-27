@@ -84,4 +84,5 @@ jobs:
           pytest -q tests/test_scheduler_postgresql.py
           tests/test_analytics_postgresql.py
           tests/test_analytics_api_postgresql.py
+          tests/test_analytics_benchmark.py
           tests/test_analytics_concurrency.py --no-cov
