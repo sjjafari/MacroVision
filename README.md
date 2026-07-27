@@ -1,5 +1,9 @@
 # MacroVision
 
+> Development status: Macro Analytics v0.7 Phase 2B deterministic execution is under
+> development as an internal service only. No public analytics API is exposed, and the
+> package release remains `0.6.0`.
+
 MacroVision is an Investment Decision Intelligence Platform. Version 0.6.0 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
