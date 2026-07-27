@@ -46,11 +46,13 @@ def test_execution_request_is_strict_utc_and_inclusive() -> None:
             requested_end_at=datetime(2026, 1, 1),
         )
     with pytest.raises(ValidationError):
-        AnalyticsExecutionRequest(
-            definition_id=1,
-            requested_start_at=MAR,
-            requested_end_at=JAN,
-            caller_fingerprint="unsafe",
+        AnalyticsExecutionRequest.model_validate(
+            {
+                "definition_id": 1,
+                "requested_start_at": MAR,
+                "requested_end_at": JAN,
+                "caller_fingerprint": "unsafe",
+            }
         )
     with pytest.raises(ValidationError):
         AnalyticsExecutionRequest(
@@ -145,6 +147,8 @@ def test_fingerprints_remain_private_in_repr_and_errors(db_session: Session) -> 
     definition = _definition(db_session, TransformationType.difference, [series])
     run = execute_analytics_run(db_session, _request(definition, start=FEB, end=FEB))
     representation = repr(run)
+    assert run.snapshot_fingerprint is not None
+    assert run.reusable_fingerprint is not None
     assert run.request_fingerprint not in representation
     assert run.snapshot_fingerprint not in representation
     assert run.reusable_fingerprint not in representation
