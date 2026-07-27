@@ -78,6 +78,31 @@ def test_service_error_messages_are_bounded_and_sanitized(error: Exception, code
     assert "private" not in message
 
 
+@pytest.mark.parametrize("control", [KeyboardInterrupt, SystemExit, GeneratorExit])
+def test_process_control_exceptions_roll_back_without_audit(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    control: type[BaseException],
+) -> None:
+    series = _series(db_session, f"S.CONTROL.{control.__name__}")
+    _observation(db_session, series, JAN, "10")
+    _observation(db_session, series, FEB, "20")
+    db_session.commit()
+    definition = _definition(db_session, TransformationType.difference, [series])
+
+    def interrupt(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise control()
+
+    monkeypatch.setattr(services, "_candidate_timestamps", interrupt)
+    with pytest.raises(control):
+        execute_analytics_run(db_session, _request(definition, start=FEB, end=FEB))
+
+    assert not db_session.in_transaction()
+    assert db_session.scalar(select(func.count(AnalyticsRun.id))) == 0
+    assert db_session.scalar(select(func.count(DerivedObservation.id))) == 0
+
+
 def test_missing_and_absent_inputs_have_distinct_results_and_lineage(
     db_session: Session,
 ) -> None:

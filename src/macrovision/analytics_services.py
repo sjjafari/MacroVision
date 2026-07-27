@@ -41,6 +41,7 @@ from macrovision.macro_data_models import (
     ObservationStatus,
     SeasonalAdjustment,
 )
+from macrovision.persistence_types import UTCDateTime
 
 ANALYTICS_ENGINE_VERSION: Final = "0.7-phase-2b.1"
 MAX_INPUTS: Final = 2
@@ -190,9 +191,23 @@ def _begin_snapshot(session: Session) -> str:
     return dialect
 
 
-def _definition_statement(request: AnalyticsExecutionRequest) -> Select[tuple[Any, ...]]:
+def _snapshot_clock(dialect: str) -> Any:
+    if dialect == "postgresql":
+        return func.statement_timestamp(type_=UTCDateTime())
+    if dialect == "sqlite":
+        return func.macrovision_utc_now(type_=UTCDateTime())
+    raise AnalyticsSnapshotError("Unsupported analytics database")
+
+
+def _definition_statement(
+    request: AnalyticsExecutionRequest, dialect: str
+) -> Select[tuple[Any, ...]]:
     statement = (
-        select(DerivedSeriesDefinition, DerivedSeriesDefinitionVersion, func.current_timestamp())
+        select(
+            DerivedSeriesDefinition,
+            DerivedSeriesDefinitionVersion,
+            _snapshot_clock(dialect),
+        )
         .join(
             DerivedSeriesDefinitionVersion,
             DerivedSeriesDefinitionVersion.definition_id == DerivedSeriesDefinition.id,
@@ -212,9 +227,9 @@ def _definition_statement(request: AnalyticsExecutionRequest) -> Select[tuple[An
 
 
 def _load_definition(
-    session: Session, request: AnalyticsExecutionRequest
+    session: Session, request: AnalyticsExecutionRequest, dialect: str
 ) -> tuple[PreparedDefinition, datetime]:
-    row = session.execute(_definition_statement(request)).one_or_none()
+    row = session.execute(_definition_statement(request, dialect)).one_or_none()
     if row is None:
         if session.get(DerivedSeriesDefinition, request.definition_id) is None:
             raise AnalyticsNotFoundError("Analytics definition was not found")
@@ -333,6 +348,38 @@ def _chunks(items: list[Any], size: int = QUERY_BATCH_SIZE) -> list[list[Any]]:
     return [items[index : index + size] for index in range(0, len(items), size)]
 
 
+def _latest_eligible_revisions(
+    session: Session, observation_ids: list[int], cutoff: datetime
+) -> tuple[DataRevision, ...]:
+    selected: list[DataRevision] = []
+    for batch in _chunks(observation_ids):
+        ranked = (
+            select(
+                DataRevision.id.label("revision_id"),
+                func.row_number()
+                .over(
+                    partition_by=DataRevision.observation_id,
+                    order_by=(DataRevision.sequence.desc(), DataRevision.id.desc()),
+                )
+                .label("revision_rank"),
+            )
+            .where(
+                DataRevision.observation_id.in_(batch),
+                DataRevision.revision_timestamp <= cutoff,
+            )
+            .subquery()
+        )
+        selected.extend(
+            session.scalars(
+                select(DataRevision)
+                .join(ranked, ranked.c.revision_id == DataRevision.id)
+                .where(ranked.c.revision_rank == 1)
+                .order_by(DataRevision.observation_id, DataRevision.id)
+            )
+        )
+    return tuple(selected)
+
+
 def _resolve_snapshot(
     session: Session,
     prepared: PreparedDefinition,
@@ -372,23 +419,8 @@ def _resolve_snapshot(
 
     revisions: dict[int, DataRevision] = {}
     observation_ids = sorted(item.id for item in observations.values())
-    grouped_revisions: dict[int, list[DataRevision]] = defaultdict(list)
-    for batch in _chunks(observation_ids):
-        for revision in session.scalars(
-            select(DataRevision)
-            .where(
-                DataRevision.observation_id.in_(batch),
-                DataRevision.revision_timestamp <= cutoff,
-            )
-            .order_by(
-                DataRevision.observation_id,
-                DataRevision.sequence,
-                DataRevision.id,
-            )
-        ):
-            grouped_revisions[revision.observation_id].append(revision)
-    for observation_id, items in grouped_revisions.items():
-        revisions[observation_id] = items[-1]
+    for revision in _latest_eligible_revisions(session, observation_ids, cutoff):
+        revisions[revision.observation_id] = revision
 
     resolved: list[ResolvedOutputPoint] = []
     for output_at in candidates:
@@ -592,8 +624,8 @@ def execute_analytics_run(
     snapshot_fingerprint: str | None = None
     started_at: datetime | None = None
     try:
-        _begin_snapshot(session)
-        prepared, database_now = _load_definition(session, request)
+        dialect = _begin_snapshot(session)
+        prepared, database_now = _load_definition(session, request, dialect)
         cutoff = request.as_of or database_now
         if cutoff > database_now:
             raise AnalyticsValidationError("as_of cannot be in the future")
@@ -668,6 +700,9 @@ def execute_analytics_run(
         run.error_message = None
         session.commit()
         return run
+    except (KeyboardInterrupt, SystemExit, GeneratorExit):
+        session.rollback()
+        raise
     except IntegrityError as exc:
         session.rollback()
         if request_fingerprint is not None:
@@ -700,7 +735,7 @@ def execute_analytics_run(
             if winner is not None:
                 return winner
         raise AnalyticsConflictError("Concurrent analytics execution conflict") from exc
-    except BaseException as exc:
+    except Exception as exc:
         session.rollback()
         if (
             prepared is not None

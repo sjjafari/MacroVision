@@ -28,6 +28,8 @@ from macrovision.analytics_services import (
     AnalyticsExecutionRequest,
     AnalyticsNotFoundError,
     AnalyticsValidationError,
+    _definition_statement,
+    _latest_eligible_revisions,
     execute_analytics_run,
 )
 from macrovision.analytics_transformations import (
@@ -49,6 +51,25 @@ JAN = datetime(2026, 1, 1, tzinfo=UTC)
 FEB = datetime(2026, 2, 1, tzinfo=UTC)
 MAR = datetime(2026, 3, 1, tzinfo=UTC)
 INGESTED = datetime(2026, 4, 1, tzinfo=UTC)
+
+
+def test_snapshot_clock_is_dialect_specific() -> None:
+    from sqlalchemy.dialects import postgresql, sqlite
+
+    request = AnalyticsExecutionRequest(
+        definition_id=1,
+        requested_start_at=JAN,
+        requested_end_at=JAN,
+    )
+    postgres_sql = str(
+        _definition_statement(request, "postgresql").compile(
+            dialect=postgresql.dialect()  # type: ignore[no-untyped-call]
+        )
+    )
+    sqlite_sql = str(_definition_statement(request, "sqlite").compile(dialect=sqlite.dialect()))
+    assert "statement_timestamp()" in postgres_sql
+    assert "CURRENT_TIMESTAMP" not in postgres_sql
+    assert "macrovision_utc_now()" in sqlite_sql
 
 
 def _series(session: Session, code: str) -> DataSeries:
@@ -375,3 +396,67 @@ def test_failed_structural_rebase_is_audited_without_partial_graph(
         )
         == 0
     )
+
+
+def test_latest_revision_query_returns_one_eligible_row_per_observation(
+    db_session: Session,
+) -> None:
+    series = _series(db_session, "S.REVISION.WINDOW")
+    first = _observation(db_session, series, JAN, "1")
+    second = _observation(db_session, series, FEB, "2")
+    db_session.commit()
+    base_time = datetime(2026, 4, 2, tzinfo=UTC)
+    for sequence in range(1, 101):
+        db_session.add(
+            DataRevision(
+                observation_id=first.id,
+                sequence=sequence,
+                previous_value=Decimal(sequence - 1),
+                revised_value=Decimal(sequence),
+                previous_status=ObservationStatus.present,
+                revised_status=ObservationStatus.present,
+                publication_timestamp=base_time,
+                revision_timestamp=base_time.replace(microsecond=sequence),
+                provider_metadata={},
+                reason="bounded history",
+            )
+        )
+    db_session.add_all(
+        [
+            DataRevision(
+                observation_id=second.id,
+                sequence=1,
+                previous_value=Decimal("2"),
+                revised_value=Decimal("3"),
+                previous_status=ObservationStatus.present,
+                revised_status=ObservationStatus.present,
+                publication_timestamp=base_time,
+                revision_timestamp=base_time,
+                provider_metadata={},
+                reason="eligible",
+            ),
+            DataRevision(
+                observation_id=second.id,
+                sequence=2,
+                previous_value=Decimal("3"),
+                revised_value=Decimal("4"),
+                previous_status=ObservationStatus.present,
+                revised_status=ObservationStatus.present,
+                publication_timestamp=base_time,
+                revision_timestamp=datetime(2026, 6, 1, tzinfo=UTC),
+                provider_metadata={},
+                reason="future",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    selected = _latest_eligible_revisions(
+        db_session, [first.id, second.id], datetime(2026, 5, 1, tzinfo=UTC)
+    )
+
+    assert len(selected) == 2
+    assert [(item.observation_id, item.sequence) for item in selected] == [
+        (first.id, 100),
+        (second.id, 1),
+    ]
