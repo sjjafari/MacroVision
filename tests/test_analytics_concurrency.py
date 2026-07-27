@@ -28,6 +28,7 @@ from macrovision.macro_data_models import DataObservation, DataRevision, Observa
 from tests.test_analytics_services import (
     FEB,
     JAN,
+    MAR,
     _definition,
     _observation,
     _request,
@@ -111,6 +112,18 @@ def test_sqlite_precise_clock_preserves_same_second_eligibility(
     assert output.value == Decimal("15.00000000")
     assert run.calculation_cutoff == explicit
     assert run.calculation_cutoff.microsecond == 500000
+    current_definition = _definition(session, TransformationType.percent_change, [series])
+    current_run = execute_analytics_run(
+        session,
+        _request(current_definition, start=FEB, end=FEB, as_of=None),
+    )
+    current_output = session.scalar(
+        select(DerivedObservation).where(DerivedObservation.run_id == current_run.id)
+    )
+    assert current_output is not None
+    assert current_output.value == Decimal("150.00000000")
+    assert current_run.calculation_cutoff == snapshot
+    assert current_run.calculation_cutoff.microsecond == 900000
     session.close()
     Base.metadata.drop_all(engine)
     engine.dispose()
@@ -301,25 +314,45 @@ def test_postgresql_repeatable_read_excludes_revision_committed_mid_run(
         )
     seed: Session = factory()
     series = _series(seed, "S.PG.SNAPSHOT")
-    _observation(seed, series, JAN, "10")
+    prior = _observation(seed, series, JAN, "10")
     current = _observation(seed, series, FEB, "20")
     seed.commit()
+    preexisting = DataRevision(
+        observation_id=prior.id,
+        sequence=1,
+        previous_value=Decimal("10"),
+        revised_value=Decimal("12"),
+        previous_status=ObservationStatus.present,
+        revised_status=ObservationStatus.present,
+        publication_timestamp=JAN,
+        revision_timestamp=datetime.now(UTC),
+        provider_metadata={},
+        reason="committed before snapshot",
+    )
+    seed.add(preexisting)
+    seed.commit()
     definition = _definition(seed, TransformationType.difference, [series])
-    request = _request(definition, start=FEB, end=FEB, as_of=None)
+    request = _request(definition, start=FEB, end=MAR, as_of=None)
+    series_id = series.id
+    prior_id = prior.id
     current_id = current.id
+    preexisting_id = preexisting.id
     seed.close()
 
     acquired = threading.Event()
-    revision_committed = threading.Event()
+    competing_writes_committed = threading.Event()
     original_resolver = analytics_services._resolve_snapshot
+    result: dict[str, object] = {}
 
     def blocking_resolver(*args: object, **kwargs: object) -> object:
+        resolver_session = args[0]
+        assert isinstance(resolver_session, Session)
+        result["backend_pid"] = resolver_session.scalar(text("SELECT pg_backend_pid()"))
         acquired.set()
-        assert revision_committed.wait(timeout=10)
+        assert competing_writes_committed.wait(timeout=10)
         return original_resolver(*args, **kwargs)  # type: ignore[arg-type]
 
     monkeypatch.setattr(analytics_services, "_resolve_snapshot", blocking_resolver)
-    result: dict[str, object] = {}
 
     def execute() -> None:
         session: Session = factory()
@@ -330,11 +363,8 @@ def test_postgresql_repeatable_read_excludes_revision_committed_mid_run(
         finally:
             session.close()
 
-    worker = threading.Thread(target=execute)
-    worker.start()
-    assert acquired.wait(timeout=10)
-    writer: Session = factory()
-    writer.add(
+    prestarted_writer: Session = factory()
+    prestarted_writer.add(
         DataRevision(
             observation_id=current_id,
             sequence=1,
@@ -343,36 +373,126 @@ def test_postgresql_repeatable_read_excludes_revision_committed_mid_run(
             previous_status=ObservationStatus.present,
             revised_status=ObservationStatus.present,
             publication_timestamp=FEB,
-            revision_timestamp=datetime(2026, 4, 2, tzinfo=UTC),
+            revision_timestamp=datetime.now(UTC),
             provider_metadata={},
-            reason="concurrent correction",
+            reason="transaction started before snapshot",
         )
     )
-    writer.commit()
-    writer.close()
-    revision_committed.set()
+    prestarted_writer.flush()
+
+    worker = threading.Thread(target=execute)
+    worker.start()
+    assert acquired.wait(timeout=10)
+    monitor: Session = factory()
+    transaction_started_at = monitor.scalar(
+        text("SELECT xact_start FROM pg_stat_activity WHERE pid=:pid"),
+        {"pid": result["backend_pid"]},
+    )
+    assert isinstance(transaction_started_at, datetime)
+    monitor.close()
+    prestarted_writer.commit()
+    prestarted_writer.close()
+
+    during_resolution: Session = factory()
+    during_resolution.add_all(
+        [
+            DataRevision(
+                observation_id=prior_id,
+                sequence=2,
+                previous_value=Decimal("12"),
+                revised_value=Decimal("14"),
+                previous_status=ObservationStatus.present,
+                revised_status=ObservationStatus.present,
+                publication_timestamp=JAN,
+                revision_timestamp=datetime.now(UTC),
+                provider_metadata={},
+                reason="created during source resolution",
+            ),
+            DataObservation(
+                series_id=series_id,
+                observed_at=MAR,
+                publication_timestamp=MAR,
+                ingestion_timestamp=datetime.now(UTC),
+                value=Decimal("30"),
+                status=ObservationStatus.present,
+                provider_metadata={},
+            ),
+        ]
+    )
+    during_resolution.commit()
+    during_resolution.close()
+    competing_writes_committed.set()
     worker.join(timeout=15)
     assert not worker.is_alive()
     assert "error" not in result
     first = result["run"]
     assert isinstance(first, AnalyticsRun)
+    assert first.calculation_cutoff > transaction_started_at
     check: Session = factory()
-    first_output = check.scalar(
-        select(DerivedObservation).where(DerivedObservation.run_id == first.id)
+    first_outputs = tuple(
+        check.scalars(
+            select(DerivedObservation)
+            .where(DerivedObservation.run_id == first.id)
+            .order_by(DerivedObservation.observed_at)
+        )
     )
-    assert first_output is not None
-    assert first_output.value == Decimal("10.00000000")
+    assert [(item.observed_at, item.value) for item in first_outputs] == [
+        (FEB, Decimal("8.00000000"))
+    ]
+    first_lineage = tuple(
+        (row.source_observation_id, row.source_revision_id)
+        for row in check.execute(
+            select(
+                DerivedObservationLineage.source_observation_id,
+                DerivedObservationLineage.source_revision_id,
+            )
+            .join(DerivedObservation)
+            .where(DerivedObservation.run_id == first.id)
+            .order_by(DerivedObservationLineage.lineage_position)
+        )
+    )
+    assert first_lineage == ((prior_id, preexisting_id), (current_id, None))
+    first_snapshot_fingerprint = first.snapshot_fingerprint
+    first_reusable_fingerprint = first.reusable_fingerprint
     check.close()
 
     monkeypatch.setattr(analytics_services, "_resolve_snapshot", original_resolver)
     later: Session = factory()
     second = execute_analytics_run(later, request)
-    second_output = later.scalar(
-        select(DerivedObservation).where(DerivedObservation.run_id == second.id)
+    second_outputs = tuple(
+        later.scalars(
+            select(DerivedObservation)
+            .where(DerivedObservation.run_id == second.id)
+            .order_by(DerivedObservation.observed_at)
+        )
     )
-    assert second_output is not None
-    assert second_output.value == Decimal("15.00000000")
+    assert [(item.observed_at, item.value) for item in second_outputs] == [
+        (FEB, Decimal("11.00000000")),
+        (MAR, Decimal("5.00000000")),
+    ]
     assert second.id != first.id
+    unchanged = later.get(AnalyticsRun, first.id)
+    assert unchanged is not None
+    assert unchanged.snapshot_fingerprint == first_snapshot_fingerprint
+    assert unchanged.reusable_fingerprint == first_reusable_fingerprint
+    unchanged_outputs = tuple(
+        later.scalars(select(DerivedObservation).where(DerivedObservation.run_id == first.id))
+    )
+    assert len(unchanged_outputs) == 1
+    assert unchanged_outputs[0].value == Decimal("8.00000000")
+    unchanged_lineage = tuple(
+        (row.source_observation_id, row.source_revision_id)
+        for row in later.execute(
+            select(
+                DerivedObservationLineage.source_observation_id,
+                DerivedObservationLineage.source_revision_id,
+            )
+            .join(DerivedObservation)
+            .where(DerivedObservation.run_id == first.id)
+            .order_by(DerivedObservationLineage.lineage_position)
+        )
+    )
+    assert unchanged_lineage == first_lineage
     later.close()
     engine.dispose()
 

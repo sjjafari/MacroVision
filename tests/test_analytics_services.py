@@ -1,5 +1,7 @@
+from copy import deepcopy
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any, cast
 
 import pytest
 from sqlalchemy import func, select
@@ -28,8 +30,14 @@ from macrovision.analytics_services import (
     AnalyticsExecutionRequest,
     AnalyticsNotFoundError,
     AnalyticsValidationError,
+    _begin_snapshot,
+    _candidate_timestamps,
     _definition_statement,
+    _digest,
     _latest_eligible_revisions,
+    _load_definition,
+    _resolve_snapshot,
+    _snapshot_payload,
     execute_analytics_run,
 )
 from macrovision.analytics_transformations import (
@@ -70,6 +78,75 @@ def test_snapshot_clock_is_dialect_specific() -> None:
     assert "statement_timestamp()" in postgres_sql
     assert "CURRENT_TIMESTAMP" not in postgres_sql
     assert "macrovision_utc_now()" in sqlite_sql
+
+
+def test_private_fingerprint_payloads_separate_cutoff_and_semantics(
+    db_session: Session,
+) -> None:
+    series = _series(db_session, "S.FINGERPRINT.SEMANTICS")
+    _observation(db_session, series, JAN, "10")
+    _observation(db_session, series, FEB, "20")
+    db_session.commit()
+    definition = _definition(db_session, TransformationType.difference, [series])
+    request = _request(definition, start=FEB, end=FEB, as_of=INGESTED)
+    dialect = _begin_snapshot(db_session)
+    prepared, _ = _load_definition(db_session, request, dialect)
+    candidates = _candidate_timestamps(db_session, prepared, request, INGESTED)
+    points = _resolve_snapshot(db_session, prepared, candidates, INGESTED)
+    db_session.rollback()
+
+    later_cutoff = datetime(2026, 4, 2, tzinfo=UTC)
+    exact_at_first = _digest(
+        _snapshot_payload(prepared, request, INGESTED, points, include_cutoff=True)
+    )
+    exact_at_second = _digest(
+        _snapshot_payload(prepared, request, later_cutoff, points, include_cutoff=True)
+    )
+    reusable_at_first = _digest(
+        _snapshot_payload(prepared, request, INGESTED, points, include_cutoff=False)
+    )
+    reusable_at_second = _digest(
+        _snapshot_payload(prepared, request, later_cutoff, points, include_cutoff=False)
+    )
+    assert exact_at_first != exact_at_second
+    assert reusable_at_first == reusable_at_second
+
+    base = cast(
+        dict[str, Any],
+        _snapshot_payload(prepared, request, INGESTED, points, include_cutoff=False),
+    )
+    variants: list[dict[str, Any]] = []
+    revision = deepcopy(base)
+    revision_source = revision["outputs"][0]["sources"][0]
+    revision_source.update(
+        {
+            "revision_id": 999,
+            "source_version_kind": "revision",
+            "source_version_id": 999,
+            "value": Decimal("11"),
+        }
+    )
+    variants.append(revision)
+    absent = deepcopy(base)
+    absent["outputs"][0]["sources"][0] = {
+        "input_position": 0,
+        "lineage_position": 0,
+        "required_at": JAN,
+        "state": "absent",
+        "absent": True,
+    }
+    variants.append(absent)
+    for key, value in (
+        ("requested_end_at", MAR),
+        ("definition_version", 2),
+        ("parameters", {"transformation_type": "difference", "changed": True}),
+        ("engine_version", "different-engine"),
+    ):
+        changed = deepcopy(base)
+        changed[key] = value
+        variants.append(changed)
+    base_digest = _digest(base)
+    assert all(_digest(variant) != base_digest for variant in variants)
 
 
 def _series(session: Session, code: str) -> DataSeries:
