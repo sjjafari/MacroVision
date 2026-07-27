@@ -141,13 +141,11 @@ def _prepare_version(
     payload: schemas.DerivedSeriesVersionCreateBase | schemas.DerivedSeriesVersionCreate,
 ) -> VersionComponents:
     source_ids = [item.source_series_id for item in payload.inputs]
-    if len(set(source_ids)) != len(source_ids):
-        raise AnalyticsValidationError("Analytics source inputs must be distinct")
     sources_by_id = {
         item.id: item
         for item in session.scalars(select(DataSeries).where(DataSeries.id.in_(source_ids)))
     }
-    if len(sources_by_id) != len(source_ids):
+    if len(sources_by_id) != len(set(source_ids)):
         raise AnalyticsNotFoundError("Analytics source data series was not found")
     sources = tuple(sources_by_id[source_id] for source_id in source_ids)
     if any(not source.is_active for source in sources):
@@ -302,7 +300,9 @@ def list_definitions(
     if code is not None:
         statement = statement.where(DerivedSeriesDefinition.code == code)
     if code_prefix is not None:
-        statement = statement.where(DerivedSeriesDefinition.code.startswith(code_prefix))
+        statement = statement.where(
+            DerivedSeriesDefinition.code.startswith(code_prefix, autoescape=True)
+        )
     rows = session.execute(
         statement.order_by(DerivedSeriesDefinition.code, DerivedSeriesDefinition.id)
         .limit(limit)

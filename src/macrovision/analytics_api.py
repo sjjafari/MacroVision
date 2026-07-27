@@ -218,6 +218,14 @@ def create_version(
     "/derived-series/{definition_id}/runs",
     response_model=schemas.AnalyticsExecutionRead,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        200: {"model": schemas.AnalyticsExecutionRead, "description": "Reusable completed run"},
+        202: {"model": schemas.AnalyticsExecutionRead, "description": "Existing active run"},
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse, "description": "Safe internal execution failure"},
+    },
 )
 def execute_definition(
     definition_id: int,

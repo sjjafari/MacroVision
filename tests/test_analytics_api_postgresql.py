@@ -205,5 +205,24 @@ def test_postgresql_definition_and_version_races_have_one_winner() -> None:
         )
         == 2
     )
+
+    for code in ("A_B.C", "AXB.C"):
+        management.create_definition(
+            check,
+            schemas.DerivedSeriesCreate(
+                code=code,
+                title=code,
+                initial_version=_payload(source_id),
+            ),
+        )
+    literal = management.list_definitions(
+        check,
+        enabled=None,
+        code=None,
+        code_prefix="A_B",
+        limit=100,
+        offset=0,
+    )
+    assert [item.code for item in literal.items] == ["A_B.C"]
     check.close()
     engine.dispose()

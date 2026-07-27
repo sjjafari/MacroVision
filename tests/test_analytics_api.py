@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 import macrovision.analytics_services as analytics_execution
 from macrovision import analytics_api
+from macrovision import analytics_api_schemas as analytics_schemas
 from macrovision import analytics_management_services as analytics_management
 from macrovision.analytics_models import (
     AnalyticsRun,
@@ -144,6 +145,122 @@ def test_definition_management_versioning_and_optimistic_lock(
     assert db_session.scalar(select(func.count(DerivedSeriesInput.id))) == 2
 
 
+@pytest.mark.parametrize(
+    ("model", "payload", "field"),
+    [
+        (
+            analytics_schemas.DerivedSeriesInputCreate,
+            {"alias": "value", "source_series_id": 1},
+            "source_series_id",
+        ),
+        (
+            analytics_schemas.DerivedSeriesPatch,
+            {"expected_lock_version": 1, "title": "valid"},
+            "expected_lock_version",
+        ),
+        (
+            analytics_schemas.DerivedSeriesStateChange,
+            {"expected_lock_version": 1},
+            "expected_lock_version",
+        ),
+        (
+            analytics_schemas.DerivedSeriesVersionCreate,
+            {
+                "expected_lock_version": 1,
+                "parameters": {"transformation_type": "difference"},
+                "inputs": [{"alias": "value", "source_series_id": 1}],
+            },
+            "expected_lock_version",
+        ),
+        (
+            analytics_schemas.AnalyticsExecutionCreate,
+            {
+                "definition_version": 1,
+                "requested_start_at": "2026-01-01T00:00:00Z",
+                "requested_end_at": "2026-02-01T00:00:00Z",
+            },
+            "definition_version",
+        ),
+        (
+            analytics_schemas.AnalyticsExecutionCreate,
+            {
+                "retry_of_run_id": 1,
+                "requested_start_at": "2026-01-01T00:00:00Z",
+                "requested_end_at": "2026-02-01T00:00:00Z",
+            },
+            "retry_of_run_id",
+        ),
+    ],
+)
+@pytest.mark.parametrize("invalid", [1.0, True, False, "1"])
+def test_public_body_integer_fields_are_strict(
+    model: type[analytics_schemas.PublicAnalyticsModel],
+    payload: dict[str, Any],
+    field: str,
+    invalid: object,
+) -> None:
+    invalid_payload = {**payload, field: invalid}
+    with pytest.raises(ValueError):
+        model.model_validate(invalid_payload)
+    assert model.model_validate(payload)
+
+
+def test_patch_omission_null_and_noop_contracts(client: TestClient, db_session: Session) -> None:
+    source_id = _seed_source(db_session, "S.API.PATCH")
+    definition = _create_definition(client, source_id, code="API.PATCH")
+    path = f"/api/v1/derived-series/{definition['id']}"
+
+    assert client.patch(path, json={"expected_lock_version": 1}).status_code == 422
+    assert client.patch(path, json={"expected_lock_version": 1, "title": None}).status_code == 422
+    assert client.patch(path, json={"expected_lock_version": 1, "title": ""}).status_code == 422
+    unchanged = client.get(path).json()
+    assert unchanged["lock_version"] == 1
+    assert unchanged["title"] == "API difference"
+
+    cleared = client.patch(path, json={"expected_lock_version": 1, "description": None})
+    assert cleared.status_code == 200
+    assert cleared.json()["description"] is None
+    assert cleared.json()["title"] == "API difference"
+    assert cleared.json()["lock_version"] == 2
+
+
+@pytest.mark.parametrize("invalid", [1.0, True, False, "1"])
+def test_fastapi_body_integer_fields_do_not_coerce(
+    client: TestClient, db_session: Session, invalid: object
+) -> None:
+    source_id = _seed_source(db_session, f"S.API.STRICT.INT.{str(invalid).upper()}")
+    create_payload = _definition_payload(source_id, code=f"API.STRICT.INT.{source_id}")
+    initial = cast(dict[str, Any], create_payload["initial_version"])
+    inputs = cast(list[dict[str, Any]], initial["inputs"])
+    inputs[0]["source_series_id"] = invalid
+    assert client.post("/api/v1/derived-series", json=create_payload).status_code == 422
+
+    definition = _create_definition(client, source_id, code=f"API.STRICT.LOCK.{source_id}")
+    definition_id = definition["id"]
+    assert (
+        client.patch(
+            f"/api/v1/derived-series/{definition_id}",
+            json={"expected_lock_version": invalid, "title": "Rejected"},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            f"/api/v1/derived-series/{definition_id}/runs",
+            json={**_execution_payload(), "definition_version": invalid},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            f"/api/v1/derived-series/{definition_id}/runs",
+            json={**_execution_payload(), "retry_of_run_id": invalid},
+        ).status_code
+        == 422
+    )
+    assert client.get(f"/api/v1/derived-series/{definition_id}").json()["lock_version"] == 1
+
+
 def test_definition_validation_pagination_and_server_owned_fields(
     client: TestClient, db_session: Session
 ) -> None:
@@ -173,6 +290,54 @@ def test_definition_validation_pagination_and_server_owned_fields(
         json=_definition_payload(source_id, code="INACTIVE.SOURCE"),
     )
     assert rejected.status_code == 422
+
+
+def test_code_prefix_is_canonical_and_literal(client: TestClient, db_session: Session) -> None:
+    source_id = _seed_source(db_session, "S.API.PREFIX")
+    for code in ("US_CPI", "USXCPI", "A_B.C", "AXB.C", "A-B.C", "A.B.C"):
+        _create_definition(client, source_id, code=code)
+    underscore = client.get("/api/v1/derived-series", params={"code_prefix": "a_b"})
+    assert underscore.status_code == 200
+    assert [item["code"] for item in underscore.json()["items"]] == ["A_B.C"]
+    assert [
+        item["code"]
+        for item in client.get("/api/v1/derived-series", params={"code_prefix": "us_"}).json()[
+            "items"
+        ]
+    ] == ["US_CPI"]
+    assert client.get("/api/v1/derived-series", params={"code_prefix": "A%"}).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("transformation_type", "aliases"),
+    [
+        ("ratio", ("numerator", "denominator")),
+        ("spread", ("minuend", "subtrahend")),
+    ],
+)
+def test_same_source_is_valid_in_distinct_semantic_roles(
+    client: TestClient,
+    db_session: Session,
+    transformation_type: str,
+    aliases: tuple[str, str],
+) -> None:
+    source_id = _seed_source(db_session, f"S.API.SAME.{transformation_type.upper()}")
+    payload = _definition_payload(
+        source_id,
+        code=f"API.SAME.{transformation_type.upper()}",
+        transformation_type=transformation_type,
+        alias=aliases[0],
+    )
+    initial = cast(dict[str, Any], payload["initial_version"])
+    initial["inputs"] = [{"alias": alias, "source_series_id": source_id} for alias in aliases]
+    response = client.post("/api/v1/derived-series", json=payload)
+    assert response.status_code == 201, response.text
+    version = client.get(f"/api/v1/derived-series/{response.json()['id']}/versions/1").json()
+    assert [item["source_series_id"] for item in version["inputs"]] == [
+        source_id,
+        source_id,
+    ]
+    assert [item["position"] for item in version["inputs"]] == [0, 1]
 
 
 def test_definition_list_uses_one_bounded_query(client: TestClient, db_session: Session) -> None:
@@ -564,12 +729,70 @@ def test_analytics_openapi_inventory_and_privacy(client: TestClient) -> None:
         "/api/v1/derived-series/{definition_id}/observations",
         "/api/v1/derived-series/{definition_id}/observations/as-of",
     }
-    assert expected <= set(payload["paths"])
+    actual = {
+        path
+        for path in payload["paths"]
+        if path.startswith("/api/v1/derived-series") or path.startswith("/api/v1/analytics-runs")
+    }
+    expected |= {
+        "/api/v1/derived-series/{definition_id}/enable",
+        "/api/v1/derived-series/{definition_id}/disable",
+        "/api/v1/derived-series/{definition_id}/versions/{version_number}",
+    }
+    assert actual == expected
     assert payload["info"]["version"] == "0.6.0"
     _assert_private_fields_absent(payload)
     rendered = str(payload)
     assert "formula" not in rendered.lower()
     assert "python" not in rendered.lower()
+
+    execution = payload["paths"]["/api/v1/derived-series/{definition_id}/runs"]["post"]
+    for status_code in ("200", "201", "202"):
+        schema = execution["responses"][status_code]["content"]["application/json"]["schema"]
+        assert schema["$ref"].endswith("/AnalyticsExecutionRead")
+    for status_code in ("404", "409", "422", "500"):
+        schema = execution["responses"][status_code]["content"]["application/json"]["schema"]
+        assert schema["$ref"].endswith("/ErrorResponse")
+
+    schemas = payload["components"]["schemas"]
+    assert set(schemas["DerivedObservationStatus"]["enum"]) == {"present", "missing"}
+    assert set(schemas["DerivedObservationMissingReason"]["enum"]) == {
+        "source_missing",
+        "timestamp_absent",
+        "insufficient_history",
+        "division_by_zero",
+        "non_finite_result",
+        "numeric_overflow",
+    }
+    assert set(schemas["SourceVersionKind"]["enum"]) == {"original", "revision"}
+
+
+def test_closed_public_response_enums_reject_invalid_values() -> None:
+    observation = {
+        "id": 1,
+        "run_id": 1,
+        "definition_version_id": 1,
+        "observed_at": "2026-01-01T00:00:00Z",
+        "value": None,
+        "status": "invalid",
+        "missing_reason": None,
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    with pytest.raises(ValueError):
+        analytics_schemas.DerivedObservationRead.model_validate(observation)
+    lineage = {
+        "id": 1,
+        "input_position": 0,
+        "input_alias": "value",
+        "lineage_position": 0,
+        "source_observation_id": 1,
+        "source_revision_id": None,
+        "source_version_kind": "invalid",
+        "source_version_id": 1,
+        "source_knowledge_timestamp": "2026-01-01T00:00:00Z",
+    }
+    with pytest.raises(ValueError):
+        analytics_schemas.DerivedObservationLineageRead.model_validate(lineage)
 
 
 def test_missing_resources_invalid_ranges_and_filters_are_controlled(
@@ -644,6 +867,39 @@ def test_missing_resources_invalid_ranges_and_filters_are_controlled(
         ).status_code
         == 422
     )
+
+
+def test_analytics_error_envelopes_are_shared_and_safe(
+    client: TestClient, db_session: Session
+) -> None:
+    source_id = _seed_source(db_session, "S.API.ERROR.ENVELOPE")
+    definition = _create_definition(client, source_id, code="API.ERROR.ENVELOPE")
+    definition_id = definition["id"]
+    responses = [
+        client.get("/api/v1/derived-series/999999"),
+        client.patch(
+            f"/api/v1/derived-series/{definition_id}",
+            json={"expected_lock_version": 999, "title": "stale"},
+        ),
+        client.patch(
+            f"/api/v1/derived-series/{definition_id}",
+            json={"expected_lock_version": 1},
+        ),
+    ]
+    assert [response.status_code for response in responses] == [404, 409, 422]
+    for response in responses:
+        body = response.json()
+        assert set(body) == {"code", "message", "details", "detail"}
+        rendered = str(body).lower()
+        for unsafe in (
+            "select ",
+            "traceback",
+            "request_fingerprint",
+            "snapshot_fingerprint",
+            "parameters_fingerprint",
+            "fred_api_key",
+        ):
+            assert unsafe not in rendered
 
 
 def test_api_error_mapping_and_execution_session_cleanup() -> None:

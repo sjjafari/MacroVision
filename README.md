@@ -532,5 +532,10 @@ The offline benchmark is available with:
 python -m macrovision.analytics_benchmark --json
 ```
 
+PostgreSQL benchmarking requires `MACROVISION_POSTGRES_BENCHMARK_URL` to identify a
+dedicated database already migrated to Alembic head `20260726_0009`. The benchmark
+never creates PostgreSQL schema objects, assigns a unique token to each invocation, and
+removes only its own rows in dependency-safe order on success or failure.
+
 There is no Analytics worker, automatic recomputation, scheduler integration, or
 derived-to-derived dependency support in this phase.

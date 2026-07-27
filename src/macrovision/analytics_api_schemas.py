@@ -2,11 +2,13 @@
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    StrictInt,
     field_validator,
     model_validator,
 )
@@ -38,9 +40,31 @@ class AnalyticsExecutionDisposition(StrEnum):
     completed_existing = "completed_existing"
 
 
+class DerivedObservationStatus(StrEnum):
+    present = "present"
+    missing = "missing"
+
+
+class DerivedObservationMissingReason(StrEnum):
+    source_missing = "source_missing"
+    timestamp_absent = "timestamp_absent"
+    insufficient_history = "insufficient_history"
+    division_by_zero = "division_by_zero"
+    non_finite_result = "non_finite_result"
+    numeric_overflow = "numeric_overflow"
+
+
+class SourceVersionKind(StrEnum):
+    original = "original"
+    revision = "revision"
+
+
+PositiveStrictInt = Annotated[StrictInt, Field(gt=0)]
+
+
 class DerivedSeriesInputCreate(PublicAnalyticsModel):
     alias: str = Field(min_length=1, max_length=40, pattern=r"^[a-z][a-z0-9_]{0,39}$")
-    source_series_id: int = Field(gt=0)
+    source_series_id: PositiveStrictInt
 
 
 class DerivedSeriesVersionCreateBase(PublicAnalyticsModel):
@@ -60,7 +84,7 @@ class DerivedSeriesVersionCreateBase(PublicAnalyticsModel):
 
 
 class DerivedSeriesVersionCreate(DerivedSeriesVersionCreateBase):
-    expected_lock_version: int = Field(gt=0)
+    expected_lock_version: PositiveStrictInt
 
 
 class DerivedSeriesCreate(PublicAnalyticsModel):
@@ -77,13 +101,26 @@ class DerivedSeriesCreate(PublicAnalyticsModel):
 
 
 class DerivedSeriesPatch(PublicAnalyticsModel):
-    expected_lock_version: int = Field(gt=0)
+    expected_lock_version: PositiveStrictInt
     title: str | None = Field(default=None, min_length=1, max_length=240)
     description: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("title", mode="before")
+    @classmethod
+    def reject_null_title(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("title cannot be null")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_change(self) -> "DerivedSeriesPatch":
+        if not ({"title", "description"} & self.model_fields_set):
+            raise ValueError("at least one metadata field is required")
+        return self
+
 
 class DerivedSeriesStateChange(PublicAnalyticsModel):
-    expected_lock_version: int = Field(gt=0)
+    expected_lock_version: PositiveStrictInt
 
 
 class DerivedSeriesInputRead(PublicAnalyticsModel):
@@ -143,11 +180,11 @@ class DerivedSeriesVersionPage(PublicAnalyticsModel):
 
 
 class AnalyticsExecutionCreate(PublicAnalyticsModel):
-    definition_version: int | None = Field(default=None, gt=0)
+    definition_version: PositiveStrictInt | None = None
     requested_start_at: datetime
     requested_end_at: datetime
     as_of: datetime | None = None
-    retry_of_run_id: int | None = Field(default=None, gt=0)
+    retry_of_run_id: PositiveStrictInt | None = None
 
     @field_validator("requested_start_at", "requested_end_at", "as_of")
     @classmethod
@@ -204,8 +241,8 @@ class DerivedObservationRead(PublicAnalyticsModel):
     definition_version_id: int
     observed_at: datetime
     value: DataDecimal | None
-    status: str
-    missing_reason: str | None
+    status: DerivedObservationStatus
+    missing_reason: DerivedObservationMissingReason | None
     created_at: datetime
 
 
@@ -232,7 +269,7 @@ class DerivedObservationLineageRead(PublicAnalyticsModel):
     lineage_position: int
     source_observation_id: int
     source_revision_id: int | None
-    source_version_kind: str
+    source_version_kind: SourceVersionKind
     source_version_id: int
     source_knowledge_timestamp: datetime
 

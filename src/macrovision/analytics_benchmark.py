@@ -7,15 +7,26 @@ import json
 import os
 import tempfile
 import time
+import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+from sqlalchemy import delete, inspect, select, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from macrovision import analytics_api_schemas as api_schemas
 from macrovision import analytics_management_services as management
 from macrovision import analytics_services as execution
+from macrovision.analytics_models import (
+    AnalyticsRun,
+    DerivedObservation,
+    DerivedObservationLineage,
+    DerivedSeriesDefinition,
+    DerivedSeriesDefinitionVersion,
+    DerivedSeriesInput,
+)
 from macrovision.database import Base, create_database_engine
 from macrovision.macro_data_models import (
     DataFrequency,
@@ -25,6 +36,22 @@ from macrovision.macro_data_models import (
     ObservationStatus,
     SeasonalAdjustment,
     SeriesCategory,
+)
+
+ALEMBIC_HEAD = "20260726_0009"
+REQUIRED_TABLES = frozenset(
+    {
+        "alembic_version",
+        "data_sources",
+        "data_series",
+        "data_observations",
+        "derived_series_definitions",
+        "derived_series_definition_versions",
+        "derived_series_inputs",
+        "analytics_runs",
+        "derived_observations",
+        "derived_observation_lineage",
+    }
 )
 
 
@@ -103,19 +130,92 @@ def _measure_resolution(
         session.close()
 
 
-def _run_case(database_url: str, count: int, transformation: str) -> dict[str, object]:
-    engine = create_database_engine(database_url)
+def _verify_postgresql_schema(engine: Engine) -> None:
+    tables = set(inspect(engine).get_table_names())
+    missing = REQUIRED_TABLES - tables
+    if missing:
+        raise RuntimeError("PostgreSQL benchmark database is not fully migrated")
+    with engine.connect() as connection:
+        version = connection.scalar(text("SELECT version_num FROM alembic_version"))
+    if version != ALEMBIC_HEAD:
+        raise RuntimeError(f"PostgreSQL benchmark requires Alembic head {ALEMBIC_HEAD}")
+
+
+def _cleanup_benchmark_rows(factory: sessionmaker[Session], token: str) -> None:
+    session = factory()
     try:
-        Base.metadata.create_all(engine)
-        factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-        setup = factory()
-        token = f"N{count}.{transformation.upper()}"
-        source_id, start, end = _seed(setup, count, token)
-        definition = management.create_definition(
-            setup, _definition_payload(source_id, transformation, token)
+        definition_ids = select(DerivedSeriesDefinition.id).where(
+            DerivedSeriesDefinition.code.startswith(f"BENCH.{token}.", autoescape=True)
         )
-        definition_id = definition.id
-        setup.close()
+        version_ids = select(DerivedSeriesDefinitionVersion.id).where(
+            DerivedSeriesDefinitionVersion.definition_id.in_(definition_ids)
+        )
+        run_ids = select(AnalyticsRun.id).where(AnalyticsRun.definition_version_id.in_(version_ids))
+        output_ids = select(DerivedObservation.id).where(DerivedObservation.run_id.in_(run_ids))
+        source_ids = select(DataSource.id).where(DataSource.code == f"BENCH.{token}")
+        series_ids = select(DataSeries.id).where(DataSeries.source_id.in_(source_ids))
+        source_observation_ids = select(DataObservation.id).where(
+            DataObservation.series_id.in_(series_ids)
+        )
+        session.execute(
+            delete(DerivedObservationLineage).where(
+                DerivedObservationLineage.derived_observation_id.in_(output_ids)
+            )
+        )
+        session.execute(delete(DerivedObservation).where(DerivedObservation.id.in_(output_ids)))
+        session.execute(delete(AnalyticsRun).where(AnalyticsRun.id.in_(run_ids)))
+        session.execute(
+            delete(DerivedSeriesInput).where(
+                DerivedSeriesInput.definition_version_id.in_(version_ids)
+            )
+        )
+        session.execute(
+            delete(DerivedSeriesDefinitionVersion).where(
+                DerivedSeriesDefinitionVersion.id.in_(version_ids)
+            )
+        )
+        session.execute(
+            delete(DerivedSeriesDefinition).where(DerivedSeriesDefinition.id.in_(definition_ids))
+        )
+        session.execute(
+            delete(DataObservation).where(DataObservation.id.in_(source_observation_ids))
+        )
+        session.execute(delete(DataSeries).where(DataSeries.id.in_(series_ids)))
+        session.execute(delete(DataSource).where(DataSource.id.in_(source_ids)))
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def _run_case(
+    database_url: str,
+    count: int,
+    transformation: str,
+    *,
+    initialize_schema: bool,
+) -> dict[str, object]:
+    engine = create_database_engine(database_url)
+    token = f"N{count}.{transformation.upper()}.{uuid.uuid4().hex[:12].upper()}"
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    cleanup_required = False
+    try:
+        if initialize_schema:
+            Base.metadata.create_all(engine)
+        else:
+            _verify_postgresql_schema(engine)
+            cleanup_required = True
+        setup = factory()
+        try:
+            source_id, start, end = _seed(setup, count, token)
+            definition = management.create_definition(
+                setup, _definition_payload(source_id, transformation, token)
+            )
+            definition_id = definition.id
+        finally:
+            setup.close()
         request = execution.AnalyticsExecutionRequest(
             definition_id=definition_id,
             requested_start_at=start,
@@ -139,8 +239,12 @@ def _run_case(database_url: str, count: int, transformation: str) -> dict[str, o
             "candidates": count,
             "transformation": transformation,
             "source_resolution_seconds": round(resolution_seconds, 6),
-            "transformation_persistence_seconds": round(
+            "estimated_transformation_persistence_seconds": round(
                 max(total_seconds - resolution_seconds, 0), 6
+            ),
+            "timing_method": (
+                "estimated by subtracting an independent source-resolution "
+                "measurement from total execution"
             ),
             "total_seconds": round(total_seconds, 6),
             "replay_seconds": round(replay_seconds, 6),
@@ -149,6 +253,8 @@ def _run_case(database_url: str, count: int, transformation: str) -> dict[str, o
             "replayed_run_id_matches": replay.id == first.id,
         }
     finally:
+        if cleanup_required:
+            _cleanup_benchmark_rows(factory, token)
         engine.dispose()
 
 
@@ -166,7 +272,12 @@ def run_benchmark(
             )
         backend = "postgresql"
         cases.extend(
-            _run_case(database_url, count, transformation)
+            _run_case(
+                database_url,
+                count,
+                transformation,
+                initialize_schema=False,
+            )
             for count in sizes
             for transformation in ("difference", "moving_average")
         )
@@ -181,6 +292,7 @@ def run_benchmark(
                             f"sqlite:///{database.as_posix()}",
                             count,
                             transformation,
+                            initialize_schema=True,
                         )
                     )
     return {"backend": backend, "cases": cases}
