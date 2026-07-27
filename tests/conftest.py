@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
+from macrovision.analytics_api import get_analytics_execution_db
 from macrovision.database import Base, create_database_engine, get_db
 from macrovision.main import app
 
@@ -33,6 +34,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
             db_session.rollback()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_analytics_execution_db] = override_get_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
