@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 
+from macrovision import __version__
 from macrovision import analytics_models as analytics_models
 from macrovision.analytics_api import router as analytics_router
 from macrovision.api import router, system_router
@@ -31,7 +32,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="MacroVision API",
-    version="0.6.0",
+    version=__version__,
     description=(
         "Investment Decision Intelligence Platform for hypothesis-driven research, "
         "risk budgeting, and evidence-based learning. It does not provide trading signals."

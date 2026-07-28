@@ -32,6 +32,13 @@ jobs:
       - run: ruff check .
       - run: mypy
       - run: pytest
+      - name: Build package and smoke-test installed wheel on SQLite
+        run: |
+          python -m build
+          python -m venv /tmp/macrovision-wheel
+          /tmp/macrovision-wheel/bin/pip install "$(ls dist/*.whl)[postgres]"
+          /tmp/macrovision-wheel/bin/python scripts/release_smoke.py \
+            --database-url sqlite:////tmp/macrovision-wheel-smoke.db
       - name: SQLite migration cycle
         env:
           MACROVISION_DATABASE_URL: sqlite:////tmp/macrovision-ci.db
@@ -76,6 +83,11 @@ jobs:
           assert not remaining, f"PostgreSQL enum types survived downgrade: {sorted(remaining)}"
           PY
           alembic upgrade head
+      - name: Smoke-test installed wheel on PostgreSQL
+        run: >-
+          /tmp/macrovision-wheel/bin/python scripts/release_smoke.py
+          --database-url
+          postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
       - name: PostgreSQL scheduler and analytics constraints
         env:
           MACROVISION_DATABASE_URL: postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision

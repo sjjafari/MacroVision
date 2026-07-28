@@ -1,10 +1,9 @@
 # MacroVision
 
-> Development status: Macro Analytics v0.7 Phase 2B deterministic execution is under
-> development as an internal service only. No public analytics API is exposed, and the
-> package release remains `0.6.0`.
+> MacroVision v0.7.0 provides the public, vintage-aware Macro Analytics API. Release
+> artifacts are produced only from reviewed commits merged into `main`.
 
-MacroVision is an Investment Decision Intelligence Platform. Version 0.6.0 provides a
+MacroVision is an Investment Decision Intelligence Platform. Version 0.7.0 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
 decision cases, immutable-vintage macroeconomic and market-data storage, and manual
@@ -52,6 +51,10 @@ Scheduler API        src/macrovision/scheduler_api.py
 Scheduler services   src/macrovision/scheduler_services.py
 Scheduler storage    src/macrovision/scheduler_models.py
 Scheduler worker     src/macrovision/scheduler_worker.py
+Analytics API        src/macrovision/analytics_api.py
+Analytics services   src/macrovision/analytics_services.py
+Analytics management src/macrovision/analytics_management_services.py
+Analytics storage    src/macrovision/analytics_models.py
 Schema history       migrations/
 Configuration        src/macrovision/config.py
 ```
@@ -59,12 +62,12 @@ Configuration        src/macrovision/config.py
 The local release uses FastAPI, Pydantic, SQLAlchemy 2, Alembic, and SQLite. Database
 schema changes are owned by Alembic rather than application startup.
 
-## Planned v0.7
+## Macro Analytics in v0.7
 
-The proposed vintage-aware, deterministic Macro Analytics Engine is documented in
+The vintage-aware, deterministic Macro Analytics Engine is documented in
 [docs/v0.7-macro-analytics-architecture.md](docs/v0.7-macro-analytics-architecture.md).
-Phase 2A persistence and strict transformation contracts are under development, but no
-analytics API is exposed yet. The current package release remains version 0.6.0.
+It provides immutable definition versions, deterministic no-look-ahead execution,
+exact persisted outputs and lineage, and bounded public management and read APIs.
 
 ## Prerequisites
 
@@ -124,8 +127,8 @@ Or run each check:
 ## Docker
 
 ```powershell
-docker build -t macrovision:0.6.0 .
-docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.6.0
+docker build -t macrovision:0.7.0 .
+docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.7.0
 ```
 
 The container applies pending migrations before starting the API and persists SQLite
@@ -261,7 +264,7 @@ authentication, brokers, and FX conversion remain intentionally excluded.
 Import request limits are configurable through `MACROVISION_MAX_IMPORT_ROWS`,
 `MACROVISION_MAX_IMPORT_NOTES_LENGTH`, and
 `MACROVISION_MAX_IMPORT_ERROR_MESSAGE_LENGTH`; `.env.example` contains safe local
-defaults. MacroVision v0.6.0 has no authentication. Any deployment must remain on a
+defaults. MacroVision v0.7.0 has no authentication. Any deployment must remain on a
 trusted private network and must not be exposed directly to the public internet.
 
 ## External providers and FRED workflow (v0.5)
@@ -479,12 +482,12 @@ dependency and set `MACROVISION_DATABASE_URL`, for example:
 postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
 ```
 
-## Macro Analytics API development (v0.7)
+## Macro Analytics API (v0.7)
 
-MacroVision v0.7 is under development. The development branch exposes strict definition
+MacroVision v0.7 exposes strict definition
 management, immutable semantic versions, synchronous execution, exact persisted run
 reads, derived observations, historical knowledge-cutoff reads, and point-level lineage
-under `/api/v1`. The released package remains `0.6.0`.
+under `/api/v1`.
 
 Create a safe synthetic definition:
 
