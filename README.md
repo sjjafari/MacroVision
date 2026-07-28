@@ -1,8 +1,7 @@
 # MacroVision
 
-> Release candidate: MacroVision v0.7.0 adds the public, vintage-aware Macro Analytics
-> API. The `v0.7.0` tag and package publication are intentionally deferred until the
-> release-preparation pull request is reviewed and merged.
+> MacroVision v0.7.0 provides the public, vintage-aware Macro Analytics API. Release
+> artifacts are produced only from reviewed commits merged into `main`.
 
 MacroVision is an Investment Decision Intelligence Platform. Version 0.7.0 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
