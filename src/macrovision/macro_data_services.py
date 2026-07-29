@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -77,12 +77,44 @@ def create_series(session: Session, payload: schemas.DataSeriesCreate) -> models
     return series
 
 
-def list_series(session: Session, *, limit: int, offset: int) -> list[models.DataSeries]:
+def list_series(
+    session: Session,
+    *,
+    limit: int,
+    offset: int,
+    search: str | None = None,
+    code: str | None = None,
+    category: models.SeriesCategory | None = None,
+    geography: str | None = None,
+    frequency: models.DataFrequency | None = None,
+    source_id: int | None = None,
+    is_active: bool | None = None,
+) -> list[models.DataSeries]:
     limit, offset = _page(limit, offset)
-    return list(
-        session.scalars(
-            select(models.DataSeries).order_by(models.DataSeries.id).limit(limit).offset(offset)
+    statement = select(models.DataSeries)
+    if search is not None:
+        term = search.strip()
+        statement = statement.where(
+            or_(
+                models.DataSeries.code.icontains(term, autoescape=True),
+                models.DataSeries.name.icontains(term, autoescape=True),
+                models.DataSeries.description.icontains(term, autoescape=True),
+            )
         )
+    if code is not None:
+        statement = statement.where(models.DataSeries.code == code)
+    if category is not None:
+        statement = statement.where(models.DataSeries.category == category)
+    if geography is not None:
+        statement = statement.where(models.DataSeries.geography == geography)
+    if frequency is not None:
+        statement = statement.where(models.DataSeries.frequency == frequency)
+    if source_id is not None:
+        statement = statement.where(models.DataSeries.source_id == source_id)
+    if is_active is not None:
+        statement = statement.where(models.DataSeries.is_active.is_(is_active))
+    return list(
+        session.scalars(statement.order_by(models.DataSeries.id).limit(limit).offset(offset))
     )
 
 
@@ -411,15 +443,24 @@ def add_observation(
 
 
 def list_observations(
-    session: Session, series_id: int, *, limit: int, offset: int
+    session: Session,
+    series_id: int,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    limit: int,
+    offset: int,
 ) -> list[models.DataObservation]:
     get_series(session, series_id)
     limit, offset = _page(limit, offset)
+    statement = _observation_statement().where(models.DataObservation.series_id == series_id)
+    if start is not None:
+        statement = statement.where(models.DataObservation.observed_at >= start)
+    if end is not None:
+        statement = statement.where(models.DataObservation.observed_at <= end)
     return list(
         session.scalars(
-            _observation_statement()
-            .where(models.DataObservation.series_id == series_id)
-            .order_by(
+            statement.order_by(
                 models.DataObservation.observed_at,
                 models.DataObservation.id,
             )
@@ -450,19 +491,24 @@ def observations_as_of(
     series_id: int,
     *,
     as_of: datetime,
+    start: datetime | None = None,
+    end: datetime | None = None,
     limit: int,
     offset: int,
 ) -> list[models.DataObservation]:
     get_series(session, series_id)
     limit, offset = _page(limit, offset)
+    statement = _observation_statement().where(
+        models.DataObservation.series_id == series_id,
+        models.DataObservation.ingestion_timestamp <= as_of,
+    )
+    if start is not None:
+        statement = statement.where(models.DataObservation.observed_at >= start)
+    if end is not None:
+        statement = statement.where(models.DataObservation.observed_at <= end)
     return list(
         session.scalars(
-            _observation_statement()
-            .where(
-                models.DataObservation.series_id == series_id,
-                models.DataObservation.ingestion_timestamp <= as_of,
-            )
-            .order_by(
+            statement.order_by(
                 models.DataObservation.observed_at,
                 models.DataObservation.id,
             )

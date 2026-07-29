@@ -1,7 +1,21 @@
 # MacroVision Web
 
-Phase 1 provides the private Persian RTL frontend foundation for MacroVision. The nine
-route shells intentionally contain no live dashboard data and make no provider calls.
+Phase 1 provides the private Persian RTL frontend foundation for MacroVision. Web MVP
+Phase 2A adds private dashboard read contracts to the backend, but the nine route
+shells intentionally remain unwired and make no provider calls.
+
+The available private backend contracts are:
+
+- `GET /api/v1/dashboards`
+- `GET /api/v1/dashboards/{dashboard_code}`
+- `GET /api/v1/dashboards/{dashboard_code}/summary`
+- filtered `GET /api/v1/data-series`
+- bounded current and as-of observation ranges
+
+Dashboard summaries return only persisted state. Comparisons are computed by the
+backend, missing metrics are explicit, and GET requests never execute Analytics. The
+frontend will consume these contracts in a later phase after its server-side data
+access layer is implemented.
 
 ## Prerequisites
 

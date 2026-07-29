@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from macrovision import macro_data_models as models
@@ -63,11 +63,36 @@ def create_series(payload: schemas.DataSeriesCreate, session: DbSession) -> sche
 
 @router.get("/data-series", response_model=list[schemas.DataSeriesRead])
 def list_series(
-    session: DbSession, limit: PageLimit = 100, offset: PageOffset = 0
+    session: DbSession,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
+    search: Annotated[str | None, Query(min_length=1, max_length=120)] = None,
+    code: Annotated[
+        str | None,
+        Query(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9_.-]+$"),
+    ] = None,
+    category: models.SeriesCategory | None = None,
+    geography: Annotated[str | None, Query(min_length=1, max_length=120)] = None,
+    frequency: models.DataFrequency | None = None,
+    source_id: Annotated[int | None, Query(gt=0)] = None,
+    is_active: bool | None = None,
 ) -> list[schemas.DataSeriesRead]:
+    if search is not None and not search.strip():
+        raise HTTPException(status_code=422, detail="search must contain non-whitespace text")
     return [
         services.series_to_read(item)
-        for item in services.list_series(session, limit=limit, offset=offset)
+        for item in services.list_series(
+            session,
+            limit=limit,
+            offset=offset,
+            search=search,
+            code=code,
+            category=category,
+            geography=geography,
+            frequency=frequency,
+            source_id=source_id,
+            is_active=is_active,
+        )
     ]
 
 
@@ -110,14 +135,26 @@ def add_observation(
 def list_observations(
     series_id: int,
     session: DbSession,
+    start: datetime | None = None,
+    end: datetime | None = None,
     limit: PageLimit = 100,
     offset: PageOffset = 0,
 ) -> list[schemas.ObservationRead]:
     try:
+        normalized_start, normalized_end = _normalized_range(start, end)
         return [
             services.observation_to_read(item)
-            for item in services.list_observations(session, series_id, limit=limit, offset=offset)
+            for item in services.list_observations(
+                session,
+                series_id,
+                start=normalized_start,
+                end=normalized_end,
+                limit=limit,
+                offset=offset,
+            )
         ]
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except services.DataNotFoundError as exc:
         raise _http_error(exc) from exc
 
@@ -138,17 +175,22 @@ def observations_as_of(
     series_id: int,
     as_of: datetime,
     session: DbSession,
+    start: datetime | None = None,
+    end: datetime | None = None,
     limit: PageLimit = 100,
     offset: PageOffset = 0,
 ) -> list[schemas.ObservationRead]:
     try:
         normalized = schemas._aware_utc(as_of)
+        normalized_start, normalized_end = _normalized_range(start, end)
         return [
             services.observation_to_read(item, as_of=normalized)
             for item in services.observations_as_of(
                 session,
                 series_id,
                 as_of=normalized,
+                start=normalized_start,
+                end=normalized_end,
                 limit=limit,
                 offset=offset,
             )
@@ -157,6 +199,20 @@ def observations_as_of(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except services.DataNotFoundError as exc:
         raise _http_error(exc) from exc
+
+
+def _normalized_range(
+    start: datetime | None, end: datetime | None
+) -> tuple[datetime | None, datetime | None]:
+    normalized_start = schemas._aware_utc(start) if start is not None else None
+    normalized_end = schemas._aware_utc(end) if end is not None else None
+    if (
+        normalized_start is not None
+        and normalized_end is not None
+        and normalized_start > normalized_end
+    ):
+        raise ValueError("start must not exceed end")
+    return normalized_start, normalized_end
 
 
 @router.get(

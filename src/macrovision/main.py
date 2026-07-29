@@ -9,6 +9,7 @@ from macrovision import analytics_models as analytics_models
 from macrovision.analytics_api import router as analytics_router
 from macrovision.api import router, system_router
 from macrovision.contracts import ErrorResponse
+from macrovision.dashboard_api import router as dashboard_router
 from macrovision.decision_api import router as decision_router
 from macrovision.errors import (
     http_error_handler,
@@ -56,3 +57,4 @@ app.include_router(macro_data_router, prefix="/api/v1")
 app.include_router(provider_router, prefix="/api/v1")
 app.include_router(scheduler_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")

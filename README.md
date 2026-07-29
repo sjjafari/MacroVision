@@ -552,7 +552,25 @@ The architecture and delivery plan for the Persian Web MVP are documented in:
 
 Frontend foundation implementation has started under [`web/`](web/README.md).
 MacroVision v0.7.0 remains the stable backend release. Phase 1 contains nine Persian
-RTL route shells and no live dashboard data.
+RTL route shells. Web MVP Phase 2A adds private, read-only backend contracts without
+wiring live data into those route shells:
+
+- `GET /api/v1/dashboards` lists the validated `home`, `markets`, and `macro`
+  dashboard definitions in deterministic order.
+- `GET /api/v1/dashboards/{dashboard_code}` returns the curated metric configuration.
+- `GET /api/v1/dashboards/{dashboard_code}/summary` returns persisted raw and derived
+  values, exact Decimal strings, source and point identity, freshness, explicit
+  missing/incomparable states, and backend-computed comparisons. It never triggers an
+  Analytics run.
+- `GET /api/v1/data-series` supports deterministic AND-combined catalog filters:
+  `search`, `code`, `category`, `geography`, `frequency`, `source_id`, and `is_active`.
+- Current and as-of raw observation lists accept inclusive aware-UTC `start` and `end`
+  bounds while preserving revision-vintage semantics.
+
+Dashboard configuration is reviewed, code-based application configuration; it contains
+no database IDs. Missing configured series stay visible as missing metrics rather than
+being silently removed. The contracts are private preview APIs, not publication
+approval, and no authentication or authorization is added in this phase.
 
 With Node.js 24 LTS and npm 11 installed:
 

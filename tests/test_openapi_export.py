@@ -22,6 +22,37 @@ def test_openapi_export_is_deterministic_and_public(tmp_path: Path) -> None:
     assert document["info"]["version"] == "0.7.0"
     assert "/api/v1/data-series" in document["paths"]
     assert "/api/v1/analytics-runs/{run_id}" in document["paths"]
+    assert "/api/v1/dashboards" in document["paths"]
+    assert "/api/v1/dashboards/{dashboard_code}" in document["paths"]
+    assert "/api/v1/dashboards/{dashboard_code}/summary" in document["paths"]
+
+    series_parameters = {
+        parameter["name"]
+        for parameter in document["paths"]["/api/v1/data-series"]["get"]["parameters"]
+    }
+    assert {
+        "search",
+        "code",
+        "category",
+        "geography",
+        "frequency",
+        "source_id",
+        "is_active",
+        "limit",
+        "offset",
+    } <= series_parameters
+
+    for path in (
+        "/api/v1/data-series/{series_id}/observations",
+        "/api/v1/data-series/{series_id}/observations/as-of",
+    ):
+        parameters = {
+            parameter["name"] for parameter in document["paths"][path]["get"]["parameters"]
+        }
+        assert {"start", "end", "limit", "offset"} <= parameters
+
+    metric_schema = document["components"]["schemas"]["DashboardMetricSummary"]
+    assert metric_schema["properties"]["value"]["anyOf"][0]["type"] == "string"
     assert not PRIVATE_FINGERPRINT_FIELDS.intersection(first_payload)
 
 
