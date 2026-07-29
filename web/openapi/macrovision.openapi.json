@@ -568,6 +568,9 @@
             ],
             "title": "Absolute Change"
           },
+          "anchor_policy": {
+            "$ref": "#/components/schemas/DashboardComparisonAnchorPolicy"
+          },
           "basis_code": {
             "title": "Basis Code",
             "type": "string"
@@ -575,6 +578,18 @@
           "basis_label_fa": {
             "title": "Basis Label Fa",
             "type": "string"
+          },
+          "current_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Observed At"
           },
           "derived_calculation_cutoff": {
             "anyOf": [
@@ -679,7 +694,7 @@
             "title": "Reference Value"
           },
           "state": {
-            "$ref": "#/components/schemas/DashboardMetricState"
+            "$ref": "#/components/schemas/DashboardComparisonState"
           },
           "state_reason": {
             "anyOf": [
@@ -700,15 +715,28 @@
           "type",
           "basis_code",
           "basis_label_fa",
+          "anchor_policy",
           "state",
           "state_reason"
         ],
         "title": "DashboardComparison",
         "type": "object"
       },
+      "DashboardComparisonAnchorPolicy": {
+        "enum": [
+          "not_applicable",
+          "previous_observation",
+          "same_observed_at"
+        ],
+        "title": "DashboardComparisonAnchorPolicy",
+        "type": "string"
+      },
       "DashboardComparisonDefinition": {
         "additionalProperties": false,
         "properties": {
+          "anchor_policy": {
+            "$ref": "#/components/schemas/DashboardComparisonAnchorPolicy"
+          },
           "basis_code": {
             "maxLength": 64,
             "minLength": 1,
@@ -743,10 +771,21 @@
         "required": [
           "type",
           "basis_code",
-          "basis_label_fa"
+          "basis_label_fa",
+          "anchor_policy"
         ],
         "title": "DashboardComparisonDefinition",
         "type": "object"
+      },
+      "DashboardComparisonState": {
+        "enum": [
+          "available",
+          "missing",
+          "incomparable",
+          "frequency_mismatch"
+        ],
+        "title": "DashboardComparisonState",
+        "type": "string"
       },
       "DashboardComparisonType": {
         "enum": [
@@ -798,13 +837,15 @@
         "additionalProperties": false,
         "properties": {
           "age_basis": {
-            "title": "Age Basis",
-            "type": "string"
+            "$ref": "#/components/schemas/DashboardFreshnessAgeBasis"
           },
           "evaluated_at": {
             "format": "date-time",
             "title": "Evaluated At",
             "type": "string"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/DashboardFreshnessPolicyType"
           },
           "stale_after_days": {
             "anyOf": [
@@ -822,6 +863,7 @@
           }
         },
         "required": [
+          "policy",
           "status",
           "stale_after_days",
           "age_basis",
@@ -830,18 +872,53 @@
         "title": "DashboardFreshness",
         "type": "object"
       },
+      "DashboardFreshnessAgeBasis": {
+        "enum": [
+          "observed_at",
+          "analytics_completed_at",
+          "not_applicable"
+        ],
+        "title": "DashboardFreshnessAgeBasis",
+        "type": "string"
+      },
       "DashboardFreshnessPolicy": {
         "additionalProperties": false,
         "properties": {
-          "basis": {
-            "default": "series_stale_after_days",
-            "pattern": "^series_stale_after_days$",
-            "title": "Basis",
-            "type": "string"
+          "age_basis": {
+            "$ref": "#/components/schemas/DashboardFreshnessAgeBasis"
+          },
+          "stale_after_days": {
+            "anyOf": [
+              {
+                "maximum": 36500.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale After Days"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DashboardFreshnessPolicyType"
           }
         },
+        "required": [
+          "type",
+          "age_basis"
+        ],
         "title": "DashboardFreshnessPolicy",
         "type": "object"
+      },
+      "DashboardFreshnessPolicyType": {
+        "enum": [
+          "raw_series_stale_after_days",
+          "explicit_stale_after_days",
+          "not_configured"
+        ],
+        "title": "DashboardFreshnessPolicyType",
+        "type": "string"
       },
       "DashboardFreshnessStatus": {
         "enum": [
@@ -1012,7 +1089,8 @@
           "metric_key",
           "kind",
           "label_fa",
-          "comparison"
+          "comparison",
+          "freshness_policy"
         ],
         "title": "DashboardMetricDefinition",
         "type": "object"
@@ -1029,9 +1107,7 @@
         "enum": [
           "available",
           "missing",
-          "stale",
-          "incomparable",
-          "frequency_mismatch"
+          "stale"
         ],
         "title": "DashboardMetricState",
         "type": "string"

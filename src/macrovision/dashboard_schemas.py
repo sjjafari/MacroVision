@@ -39,10 +39,21 @@ class DashboardComparisonType(StrEnum):
     existing_derived_metric = "existing_derived_metric"
 
 
+class DashboardComparisonAnchorPolicy(StrEnum):
+    not_applicable = "not_applicable"
+    previous_observation = "previous_observation"
+    same_observed_at = "same_observed_at"
+
+
 class DashboardMetricState(StrEnum):
     available = "available"
     missing = "missing"
     stale = "stale"
+
+
+class DashboardComparisonState(StrEnum):
+    available = "available"
+    missing = "missing"
     incomparable = "incomparable"
     frequency_mismatch = "frequency_mismatch"
 
@@ -54,6 +65,18 @@ class DashboardFreshnessStatus(StrEnum):
     unavailable = "unavailable"
 
 
+class DashboardFreshnessPolicyType(StrEnum):
+    raw_series_stale_after_days = "raw_series_stale_after_days"
+    explicit_stale_after_days = "explicit_stale_after_days"
+    not_configured = "not_configured"
+
+
+class DashboardFreshnessAgeBasis(StrEnum):
+    observed_at = "observed_at"
+    analytics_completed_at = "analytics_completed_at"
+    not_applicable = "not_applicable"
+
+
 class DashboardModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -62,6 +85,7 @@ class DashboardComparisonDefinition(DashboardModel):
     type: DashboardComparisonType
     basis_code: str = Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_]*$")
     basis_label_fa: str = Field(min_length=1, max_length=160)
+    anchor_policy: DashboardComparisonAnchorPolicy
     derived_definition_code: str | None = Field(
         default=None,
         min_length=1,
@@ -74,13 +98,49 @@ class DashboardComparisonDefinition(DashboardModel):
         requires_code = self.type == DashboardComparisonType.existing_derived_metric
         if requires_code != (self.derived_definition_code is not None):
             raise ValueError("existing_derived_metric alone requires derived_definition_code")
+        expected_anchor = {
+            DashboardComparisonType.none: DashboardComparisonAnchorPolicy.not_applicable,
+            DashboardComparisonType.previous_observation: (
+                DashboardComparisonAnchorPolicy.previous_observation
+            ),
+            DashboardComparisonType.existing_derived_metric: (
+                DashboardComparisonAnchorPolicy.same_observed_at
+            ),
+        }[self.type]
+        if self.anchor_policy != expected_anchor:
+            raise ValueError("comparison type requires its matching anchor policy")
         return self
 
 
 class DashboardFreshnessPolicy(DashboardModel):
-    basis: str = Field(
-        default="series_stale_after_days",
-        pattern=r"^series_stale_after_days$",
+    type: DashboardFreshnessPolicyType
+    stale_after_days: int | None = Field(default=None, ge=0, le=36500)
+    age_basis: DashboardFreshnessAgeBasis
+
+    @model_validator(mode="after")
+    def validate_policy(self) -> "DashboardFreshnessPolicy":
+        if self.type == DashboardFreshnessPolicyType.raw_series_stale_after_days:
+            if self.stale_after_days is not None:
+                raise ValueError("raw series freshness uses the persisted series threshold")
+            if self.age_basis != DashboardFreshnessAgeBasis.observed_at:
+                raise ValueError("raw series freshness must use observed_at")
+        elif self.type == DashboardFreshnessPolicyType.explicit_stale_after_days:
+            if self.stale_after_days is None:
+                raise ValueError("explicit freshness requires stale_after_days")
+            if self.age_basis == DashboardFreshnessAgeBasis.not_applicable:
+                raise ValueError("explicit freshness requires a timestamp age basis")
+        elif (
+            self.stale_after_days is not None
+            or self.age_basis != DashboardFreshnessAgeBasis.not_applicable
+        ):
+            raise ValueError("not_configured freshness cannot define a threshold or age basis")
+        return self
+
+
+def raw_freshness_policy() -> DashboardFreshnessPolicy:
+    return DashboardFreshnessPolicy(
+        type=DashboardFreshnessPolicyType.raw_series_stale_after_days,
+        age_basis=DashboardFreshnessAgeBasis.observed_at,
     )
 
 
@@ -103,7 +163,7 @@ class DashboardMetricDefinition(DashboardModel):
     subtitle_fa: str | None = Field(default=None, max_length=240)
     localized_unit_label: str | None = Field(default=None, max_length=80)
     comparison: DashboardComparisonDefinition
-    freshness_policy: DashboardFreshnessPolicy = Field(default_factory=DashboardFreshnessPolicy)
+    freshness_policy: DashboardFreshnessPolicy
     featured_chart: bool = False
 
     @model_validator(mode="after")
@@ -119,6 +179,18 @@ class DashboardMetricDefinition(DashboardModel):
             and self.comparison.type != DashboardComparisonType.none
         ):
             raise ValueError("derived dashboard metrics must use comparison type none")
+        if (
+            self.kind == DashboardMetricKind.raw
+            and self.freshness_policy.type
+            != DashboardFreshnessPolicyType.raw_series_stale_after_days
+        ):
+            raise ValueError("raw metrics require the raw-series freshness policy")
+        if (
+            self.kind == DashboardMetricKind.derived
+            and self.freshness_policy.type
+            == DashboardFreshnessPolicyType.raw_series_stale_after_days
+        ):
+            raise ValueError("derived metrics cannot use a raw-series freshness policy")
         return self
 
 
@@ -173,9 +245,10 @@ class DerivedDashboardIdentity(DashboardModel):
 
 
 class DashboardFreshness(DashboardModel):
+    policy: DashboardFreshnessPolicyType
     status: DashboardFreshnessStatus
     stale_after_days: int | None
-    age_basis: str
+    age_basis: DashboardFreshnessAgeBasis
     evaluated_at: datetime
 
 
@@ -183,8 +256,10 @@ class DashboardComparison(DashboardModel):
     type: DashboardComparisonType
     basis_code: str
     basis_label_fa: str
-    state: DashboardMetricState
+    anchor_policy: DashboardComparisonAnchorPolicy
+    state: DashboardComparisonState
     state_reason: str | None
+    current_observed_at: datetime | None = None
     reference_observation_id: int | None = None
     reference_observed_at: datetime | None = None
     reference_value: DataDecimal | None = None

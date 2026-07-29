@@ -21,9 +21,13 @@ from macrovision.dashboard_catalog import (
 from macrovision.dashboard_schemas import (
     DashboardCode,
     DashboardComparison,
+    DashboardComparisonState,
     DashboardComparisonType,
     DashboardDefinition,
     DashboardFreshness,
+    DashboardFreshnessAgeBasis,
+    DashboardFreshnessPolicy,
+    DashboardFreshnessPolicyType,
     DashboardFreshnessStatus,
     DashboardGroupSummary,
     DashboardMetricDefinition,
@@ -263,31 +267,52 @@ def _load_derived(session: Session, codes: set[str]) -> dict[str, _DerivedResult
 
 
 def _freshness(
+    policy: DashboardFreshnessPolicy,
     series: DataSeries | None,
     observed_at: datetime | None,
+    analytics_completed_at: datetime | None,
     generated_at: datetime,
 ) -> DashboardFreshness:
-    if series is None or observed_at is None:
+    if observed_at is None:
         return DashboardFreshness(
+            policy=policy.type,
             status=DashboardFreshnessStatus.unavailable,
-            stale_after_days=series.stale_after_days if series is not None else None,
-            age_basis="observed_at",
+            stale_after_days=None,
+            age_basis=policy.age_basis,
             evaluated_at=generated_at,
         )
-    stale_after = series.stale_after_days
-    if stale_after is None:
+    if policy.type == DashboardFreshnessPolicyType.not_configured:
+        return DashboardFreshness(
+            policy=policy.type,
+            status=DashboardFreshnessStatus.not_configured,
+            stale_after_days=None,
+            age_basis=policy.age_basis,
+            evaluated_at=generated_at,
+        )
+    if policy.type == DashboardFreshnessPolicyType.raw_series_stale_after_days:
+        stale_after = series.stale_after_days if series is not None else None
+        age_timestamp: datetime | None = observed_at
+    else:
+        stale_after = policy.stale_after_days
+        age_timestamp = (
+            observed_at
+            if policy.age_basis == DashboardFreshnessAgeBasis.observed_at
+            else analytics_completed_at
+        )
+    if stale_after is None or age_timestamp is None:
         status = DashboardFreshnessStatus.not_configured
     else:
-        age_days = max((generated_at.date() - observed_at.date()).days, 0)
+        age_days = max((generated_at.date() - age_timestamp.date()).days, 0)
         status = (
             DashboardFreshnessStatus.stale
             if age_days > stale_after
-            else DashboardFreshnessStatus.current
+            else (DashboardFreshnessStatus.current)
         )
     return DashboardFreshness(
+        policy=policy.type,
         status=status,
         stale_after_days=stale_after,
-        age_basis="observed_at",
+        age_basis=policy.age_basis,
         evaluated_at=generated_at,
     )
 
@@ -297,7 +322,8 @@ def _empty_comparison(metric: DashboardMetricDefinition) -> DashboardComparison:
         type=metric.comparison.type,
         basis_code=metric.comparison.basis_code,
         basis_label_fa=metric.comparison.basis_label_fa,
-        state=DashboardMetricState.missing,
+        anchor_policy=metric.comparison.anchor_policy,
+        state=DashboardComparisonState.missing,
         state_reason="metric_unavailable",
     )
 
@@ -312,39 +338,52 @@ def _quantized(value: Decimal) -> Decimal:
 def _previous_comparison(
     metric: DashboardMetricDefinition,
     current_value: Decimal,
+    current_observed_at: datetime,
     previous: DataObservation | None,
 ) -> DashboardComparison:
     base = {
         "type": metric.comparison.type,
         "basis_code": metric.comparison.basis_code,
         "basis_label_fa": metric.comparison.basis_label_fa,
+        "anchor_policy": metric.comparison.anchor_policy,
+        "current_observed_at": current_observed_at,
     }
     if previous is None:
         return DashboardComparison(
             **base,
-            state=DashboardMetricState.incomparable,
+            state=DashboardComparisonState.incomparable,
             state_reason="previous_observation_missing",
         )
     previous_read = macro_data_services.observation_to_read(previous)
     if previous_read.status != ObservationStatus.present or previous_read.value is None:
         return DashboardComparison(
             **base,
-            state=DashboardMetricState.incomparable,
+            state=DashboardComparisonState.incomparable,
             state_reason="previous_observation_has_no_value",
             reference_observation_id=previous.id,
         )
-    absolute = current_value - previous_read.value
+    try:
+        absolute = _quantized(current_value - previous_read.value)
+    except (InvalidOperation, OverflowError):
+        return DashboardComparison(
+            **base,
+            state=DashboardComparisonState.incomparable,
+            state_reason="absolute_change_not_representable",
+            reference_observation_id=previous.id,
+            reference_observed_at=previous_read.observed_at,
+            reference_value=previous_read.value,
+        )
     percentage: Decimal | None = None
-    state = DashboardMetricState.available
+    state = DashboardComparisonState.available
     reason = None
     if previous_read.value == 0:
-        state = DashboardMetricState.incomparable
+        state = DashboardComparisonState.incomparable
         reason = "percentage_reference_is_zero"
     else:
         try:
             percentage = _quantized((absolute / previous_read.value) * Decimal(100))
         except (InvalidOperation, OverflowError):
-            state = DashboardMetricState.incomparable
+            state = DashboardComparisonState.incomparable
             reason = "percentage_change_not_representable"
     return DashboardComparison(
         **base,
@@ -379,6 +418,7 @@ def _derived_identity(code: str, result: _DerivedResult | None) -> DerivedDashbo
 def _existing_derived_comparison(
     metric: DashboardMetricDefinition,
     raw_frequency: DataFrequency,
+    current_observed_at: datetime,
     derived: dict[str, _DerivedResult],
 ) -> DashboardComparison:
     code = metric.comparison.derived_definition_code
@@ -388,32 +428,43 @@ def _existing_derived_comparison(
         "type": metric.comparison.type,
         "basis_code": metric.comparison.basis_code,
         "basis_label_fa": metric.comparison.basis_label_fa,
+        "anchor_policy": metric.comparison.anchor_policy,
+        "current_observed_at": current_observed_at,
         "derived_identity": _derived_identity(code, result),
     }
     if result is None or result.run is None or result.observation is None:
         return DashboardComparison(
             **base,
-            state=DashboardMetricState.missing,
+            state=DashboardComparisonState.missing,
             state_reason="derived_comparison_missing",
         )
     if DataFrequency(result.version.output_frequency) != raw_frequency:
         return DashboardComparison(
             **base,
-            state=DashboardMetricState.frequency_mismatch,
+            state=DashboardComparisonState.frequency_mismatch,
             state_reason="derived_comparison_frequency_mismatch",
+        )
+    if result.observation.observed_at.astimezone(UTC) != current_observed_at.astimezone(UTC):
+        return DashboardComparison(
+            **base,
+            state=DashboardComparisonState.incomparable,
+            state_reason="derived_comparison_anchor_mismatch",
+            derived_observed_at=result.observation.observed_at.astimezone(UTC),
+            derived_calculation_cutoff=result.run.calculation_cutoff,
+            derived_completed_at=result.run.completed_at,
         )
     if result.observation.status != "present" or result.observation.value is None:
         return DashboardComparison(
             **base,
-            state=DashboardMetricState.missing,
+            state=DashboardComparisonState.missing,
             state_reason=result.observation.missing_reason or "derived_comparison_missing",
         )
     return DashboardComparison(
         **base,
-        state=DashboardMetricState.available,
+        state=DashboardComparisonState.available,
         state_reason=None,
         derived_value=result.observation.value,
-        derived_observed_at=result.observation.observed_at,
+        derived_observed_at=result.observation.observed_at.astimezone(UTC),
         derived_calculation_cutoff=result.run.calculation_cutoff,
         derived_completed_at=result.run.completed_at,
     )
@@ -458,7 +509,13 @@ def _raw_summary(
             analytics_completed_at=None,
             source=None,
             comparison=_empty_comparison(metric),
-            freshness=_freshness(series, None, generated_at),
+            freshness=_freshness(
+                metric.freshness_policy,
+                series,
+                None,
+                None,
+                generated_at,
+            ),
             raw_identity=raw_identity,
             derived_identity=None,
         )
@@ -469,39 +526,52 @@ def _raw_summary(
         reference_url=series.source.reference_url,
         source_reference=current_read.source_reference,
     )
-    reason: str | None
-    if current_read.status != ObservationStatus.present or current_read.value is None:
+    point_available = (
+        current_read.status == ObservationStatus.present and current_read.value is not None
+    )
+    if not point_available:
         comparison = _empty_comparison(metric)
-        state = DashboardMetricState.missing
-        reason = "current_observation_missing"
     elif metric.comparison.type == DashboardComparisonType.previous_observation:
+        assert current_read.value is not None
         comparison = _previous_comparison(
             metric,
             current_read.value,
+            current_read.observed_at,
             observations[1] if len(observations) > 1 else None,
         )
-        state = comparison.state
-        reason = comparison.state_reason
     elif metric.comparison.type == DashboardComparisonType.existing_derived_metric:
-        comparison = _existing_derived_comparison(metric, series.frequency, derived)
-        state = comparison.state
-        reason = comparison.state_reason
+        comparison = _existing_derived_comparison(
+            metric,
+            series.frequency,
+            current_read.observed_at,
+            derived,
+        )
     else:
         comparison = DashboardComparison(
             type=metric.comparison.type,
             basis_code=metric.comparison.basis_code,
             basis_label_fa=metric.comparison.basis_label_fa,
-            state=DashboardMetricState.available,
+            anchor_policy=metric.comparison.anchor_policy,
+            state=DashboardComparisonState.available,
             state_reason=None,
+            current_observed_at=current_read.observed_at,
         )
-        state = DashboardMetricState.available
-        reason = None
-    freshness = _freshness(series, current_read.observed_at, generated_at)
-    if state == DashboardMetricState.available and (
-        freshness.status == DashboardFreshnessStatus.stale
-    ):
+    freshness = _freshness(
+        metric.freshness_policy,
+        series,
+        current_read.observed_at if point_available else None,
+        None,
+        generated_at,
+    )
+    if not point_available:
+        state = DashboardMetricState.missing
+        reason = "current_observation_missing"
+    elif freshness.status == DashboardFreshnessStatus.stale:
         state = DashboardMetricState.stale
         reason = "series_stale"
+    else:
+        state = DashboardMetricState.available
+        reason = None
     return DashboardMetricSummary(
         metric_key=metric.metric_key,
         kind=metric.kind,
@@ -546,20 +616,40 @@ def _derived_summary(
         and observation.status == "present"
         and observation.value is not None
     )
+    freshness = _freshness(
+        metric.freshness_policy,
+        None,
+        observation.observed_at if available and observation is not None else None,
+        run.completed_at if run is not None else None,
+        generated_at,
+    )
+    metric_state = (
+        DashboardMetricState.missing
+        if not available
+        else (
+            DashboardMetricState.stale
+            if freshness.status == DashboardFreshnessStatus.stale
+            else DashboardMetricState.available
+        )
+    )
     return DashboardMetricSummary(
         metric_key=metric.metric_key,
         kind=metric.kind,
         label_fa=metric.label_fa,
         subtitle_fa=metric.subtitle_fa,
-        state=(DashboardMetricState.available if available else DashboardMetricState.missing),
-        state_reason=None if available else "persisted_derived_result_missing",
+        state=metric_state,
+        state_reason=(
+            "persisted_derived_result_missing"
+            if not available
+            else ("derived_result_stale" if metric_state == DashboardMetricState.stale else None)
+        ),
         value=observation.value if available and observation is not None else None,
         unit=result.version.output_unit if result is not None else None,
         localized_unit_label=metric.localized_unit_label,
         frequency=(DataFrequency(result.version.output_frequency) if result is not None else None),
         geography=result.version.output_geography if result is not None else None,
         currency=result.version.output_currency if result is not None else None,
-        observed_at=observation.observed_at if observation is not None else None,
+        observed_at=(observation.observed_at.astimezone(UTC) if observation is not None else None),
         source_publication_timestamp=None,
         knowledge_cutoff=run.calculation_cutoff if run is not None else None,
         calculation_cutoff=run.calculation_cutoff if run is not None else None,
@@ -569,10 +659,16 @@ def _derived_summary(
             type=metric.comparison.type,
             basis_code=metric.comparison.basis_code,
             basis_label_fa=metric.comparison.basis_label_fa,
-            state=(DashboardMetricState.available if available else DashboardMetricState.missing),
+            anchor_policy=metric.comparison.anchor_policy,
+            state=(
+                DashboardComparisonState.available
+                if available
+                else DashboardComparisonState.missing
+            ),
             state_reason=None if available else "persisted_derived_result_missing",
+            current_observed_at=observation.observed_at if observation is not None else None,
         ),
-        freshness=_freshness(None, None, generated_at),
+        freshness=freshness,
         raw_identity=None,
         derived_identity=identity,
     )
@@ -619,7 +715,7 @@ def dashboard_summary(
         generated_at=generated_at,
         latest_knowledge_cutoff=max(cutoffs) if cutoffs else None,
         stale_metric_count=sum(
-            metric.state == DashboardMetricState.stale
+            metric.freshness.status == DashboardFreshnessStatus.stale
             for group in groups
             for metric in group.metrics
         ),

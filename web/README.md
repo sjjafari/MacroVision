@@ -17,6 +17,19 @@ backend, missing metrics are explicit, and GET requests never execute Analytics.
 frontend will consume these contracts in a later phase after its server-side data
 access layer is implemented.
 
+The summary contract keeps point state separate from comparison state. A present point
+remains available or stale even if its comparison is missing, incomparable, or has a
+frequency mismatch. `basis_code` identifies the comparison period and `anchor_policy`
+requires an exact point relationship; existing derived comparisons currently use
+`same_observed_at` and never silently align adjacent dates. Raw freshness uses the
+series threshold, while derived freshness is honestly `not_configured` until a reviewed
+policy exists. `stale_metric_count` is derived from freshness status, and Decimal
+overflow in a comparison is represented as an incomparable comparison rather than a
+failed response.
+
+Phase 2B frontend data wiring remains pending. Phase 2A adds no migration, provider
+request, implicit Analytics execution, authentication, or public deployment.
+
 ## Prerequisites
 
 - Node.js 24 LTS (the exact development version is recorded in `../.nvmrc`)

@@ -53,6 +53,34 @@ def test_openapi_export_is_deterministic_and_public(tmp_path: Path) -> None:
 
     metric_schema = document["components"]["schemas"]["DashboardMetricSummary"]
     assert metric_schema["properties"]["value"]["anyOf"][0]["type"] == "string"
+    comparison_schema = document["components"]["schemas"]["DashboardComparison"]
+    assert "anchor_policy" in comparison_schema["required"]
+    assert "current_observed_at" in comparison_schema["properties"]
+    assert "derived_observed_at" in comparison_schema["properties"]
+    freshness_schema = document["components"]["schemas"]["DashboardFreshness"]
+    assert "policy" in freshness_schema["required"]
+    assert "age_basis" in freshness_schema["required"]
+    assert set(document["components"]["schemas"]["DashboardComparisonAnchorPolicy"]["enum"]) == {
+        "not_applicable",
+        "previous_observation",
+        "same_observed_at",
+    }
+    assert set(document["components"]["schemas"]["DashboardMetricState"]["enum"]) == {
+        "available",
+        "missing",
+        "stale",
+    }
+    assert set(document["components"]["schemas"]["DashboardComparisonState"]["enum"]) == {
+        "available",
+        "missing",
+        "incomparable",
+        "frequency_mismatch",
+    }
+    assert set(document["components"]["schemas"]["DashboardFreshnessPolicyType"]["enum"]) == {
+        "raw_series_stale_after_days",
+        "explicit_stale_after_days",
+        "not_configured",
+    }
     assert not PRIVATE_FINGERPRINT_FIELDS.intersection(first_payload)
 
 

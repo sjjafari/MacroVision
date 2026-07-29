@@ -1327,10 +1327,13 @@ export interface components {
         DashboardComparison: {
             /** Absolute Change */
             absolute_change?: string | null;
+            anchor_policy: components["schemas"]["DashboardComparisonAnchorPolicy"];
             /** Basis Code */
             basis_code: string;
             /** Basis Label Fa */
             basis_label_fa: string;
+            /** Current Observed At */
+            current_observed_at?: string | null;
             /** Derived Calculation Cutoff */
             derived_calculation_cutoff?: string | null;
             /** Derived Completed At */
@@ -1348,13 +1351,19 @@ export interface components {
             reference_observed_at?: string | null;
             /** Reference Value */
             reference_value?: string | null;
-            state: components["schemas"]["DashboardMetricState"];
+            state: components["schemas"]["DashboardComparisonState"];
             /** State Reason */
             state_reason: string | null;
             type: components["schemas"]["DashboardComparisonType"];
         };
+        /**
+         * DashboardComparisonAnchorPolicy
+         * @enum {string}
+         */
+        DashboardComparisonAnchorPolicy: "not_applicable" | "previous_observation" | "same_observed_at";
         /** DashboardComparisonDefinition */
         DashboardComparisonDefinition: {
+            anchor_policy: components["schemas"]["DashboardComparisonAnchorPolicy"];
             /** Basis Code */
             basis_code: string;
             /** Basis Label Fa */
@@ -1363,6 +1372,11 @@ export interface components {
             derived_definition_code?: string | null;
             type: components["schemas"]["DashboardComparisonType"];
         };
+        /**
+         * DashboardComparisonState
+         * @enum {string}
+         */
+        DashboardComparisonState: "available" | "missing" | "incomparable" | "frequency_mismatch";
         /**
          * DashboardComparisonType
          * @enum {string}
@@ -1380,25 +1394,34 @@ export interface components {
         };
         /** DashboardFreshness */
         DashboardFreshness: {
-            /** Age Basis */
-            age_basis: string;
+            age_basis: components["schemas"]["DashboardFreshnessAgeBasis"];
             /**
              * Evaluated At
              * Format: date-time
              */
             evaluated_at: string;
+            policy: components["schemas"]["DashboardFreshnessPolicyType"];
             /** Stale After Days */
             stale_after_days: number | null;
             status: components["schemas"]["DashboardFreshnessStatus"];
         };
+        /**
+         * DashboardFreshnessAgeBasis
+         * @enum {string}
+         */
+        DashboardFreshnessAgeBasis: "observed_at" | "analytics_completed_at" | "not_applicable";
         /** DashboardFreshnessPolicy */
         DashboardFreshnessPolicy: {
-            /**
-             * Basis
-             * @default series_stale_after_days
-             */
-            basis: string;
+            age_basis: components["schemas"]["DashboardFreshnessAgeBasis"];
+            /** Stale After Days */
+            stale_after_days?: number | null;
+            type: components["schemas"]["DashboardFreshnessPolicyType"];
         };
+        /**
+         * DashboardFreshnessPolicyType
+         * @enum {string}
+         */
+        DashboardFreshnessPolicyType: "raw_series_stale_after_days" | "explicit_stale_after_days" | "not_configured";
         /**
          * DashboardFreshnessStatus
          * @enum {string}
@@ -1435,7 +1458,7 @@ export interface components {
              * @default false
              */
             featured_chart: boolean;
-            freshness_policy?: components["schemas"]["DashboardFreshnessPolicy"];
+            freshness_policy: components["schemas"]["DashboardFreshnessPolicy"];
             kind: components["schemas"]["DashboardMetricKind"];
             /** Label Fa */
             label_fa: string;
@@ -1457,7 +1480,7 @@ export interface components {
          * DashboardMetricState
          * @enum {string}
          */
-        DashboardMetricState: "available" | "missing" | "stale" | "incomparable" | "frequency_mismatch";
+        DashboardMetricState: "available" | "missing" | "stale";
         /** DashboardMetricSummary */
         DashboardMetricSummary: {
             /** Analytics Completed At */

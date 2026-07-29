@@ -8,13 +8,18 @@ from collections.abc import Iterable
 
 from macrovision.dashboard_schemas import (
     DashboardCode,
+    DashboardComparisonAnchorPolicy,
     DashboardComparisonDefinition,
     DashboardComparisonType,
     DashboardDefinition,
+    DashboardFreshnessAgeBasis,
+    DashboardFreshnessPolicy,
+    DashboardFreshnessPolicyType,
     DashboardGroupCode,
     DashboardGroupDefinition,
     DashboardMetricDefinition,
     DashboardMetricKind,
+    raw_freshness_policy,
 )
 
 
@@ -25,10 +30,20 @@ def _comparison(
     *,
     derived_definition_code: str | None = None,
 ) -> DashboardComparisonDefinition:
+    anchor_policy = {
+        DashboardComparisonType.none: DashboardComparisonAnchorPolicy.not_applicable,
+        DashboardComparisonType.previous_observation: (
+            DashboardComparisonAnchorPolicy.previous_observation
+        ),
+        DashboardComparisonType.existing_derived_metric: (
+            DashboardComparisonAnchorPolicy.same_observed_at
+        ),
+    }[comparison_type]
     return DashboardComparisonDefinition(
         type=comparison_type,
         basis_code=basis_code,
         basis_label_fa=basis_label_fa,
+        anchor_policy=anchor_policy,
         derived_definition_code=derived_definition_code,
     )
 
@@ -63,6 +78,7 @@ def _raw(
         subtitle_fa=subtitle_fa,
         localized_unit_label=localized_unit_label,
         comparison=comparison,
+        freshness_policy=raw_freshness_policy(),
         featured_chart=featured_chart,
     )
 
@@ -84,6 +100,10 @@ def _derived(
         subtitle_fa=subtitle_fa,
         localized_unit_label=localized_unit_label,
         comparison=NO_COMPARISON,
+        freshness_policy=DashboardFreshnessPolicy(
+            type=DashboardFreshnessPolicyType.not_configured,
+            age_basis=DashboardFreshnessAgeBasis.not_applicable,
+        ),
         featured_chart=featured_chart,
     )
 

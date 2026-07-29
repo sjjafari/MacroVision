@@ -572,6 +572,22 @@ no database IDs. Missing configured series stay visible as missing metrics rathe
 being silently removed. The contracts are private preview APIs, not publication
 approval, and no authentication or authorization is added in this phase.
 
+Metric state describes only the selected point: `missing` when no present value exists,
+`stale` when its freshness policy says it is stale, and `available` otherwise.
+Comparison state independently reports `available`, `missing`, `incomparable`, or
+`frequency_mismatch`; an unavailable comparison never erases a valid current value.
+`basis_code` is the stable comparison-period code, while `anchor_policy` specifies how
+points are joined. Persisted derived comparisons require `same_observed_at` after UTC
+normalization and never align, fill, resample, or shift a nearby point.
+
+Raw freshness uses the series' reviewed `stale_after_days` threshold. Curated derived
+metrics currently declare freshness `not_configured` rather than borrowing a raw-series
+policy or inventing a threshold. `stale_metric_count` counts freshness objects whose
+status is `stale`, independently of comparison completeness. Absolute and percentage
+changes are exact eight-decimal, half-even Decimal values; a non-representable result
+returns an `incomparable` comparison with null calculated fields instead of failing the
+summary request.
+
 With Node.js 24 LTS and npm 11 installed:
 
 ```powershell
