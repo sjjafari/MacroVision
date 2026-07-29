@@ -542,3 +542,14 @@ removes only its own rows in dependency-safe order on success or failure.
 
 There is no Analytics worker, automatic recomputation, scheduler integration, or
 derived-to-derived dependency support in this phase.
+
+## MacroVision Web v0.8 planning
+
+The architecture and delivery plan for the Persian Web MVP are documented in:
+
+- [Web MVP architecture](docs/v0.8-web-mvp-architecture.md)
+- [Web route/API map](docs/v0.8-web-mvp-route-api-map.md)
+
+Frontend implementation has not started. MacroVision v0.7.0 remains the stable backend
+release, and the first web release must remain private until authentication,
+authorization, and public-deployment controls exist.
