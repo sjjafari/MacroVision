@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { PrivatePreviewBadge } from "@/components/badges";
+import { NavigationLinks } from "@/components/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { NAVIGATION_ROUTES } from "@/lib/routes";
 
 export function GlobalHeader() {
   return (
@@ -31,16 +31,7 @@ export function Sidebar() {
       <nav>
         <p className="nav-heading">فضای پژوهش</p>
         <ul>
-          {NAVIGATION_ROUTES.map((route, index) => (
-            <li key={route.href}>
-              <Link href={route.href}>
-                <span className="nav-index ltr" aria-hidden="true">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span>{route.label}</span>
-              </Link>
-            </li>
-          ))}
+          <NavigationLinks />
         </ul>
       </nav>
       <div className="sidebar-note">
@@ -52,15 +43,9 @@ export function Sidebar() {
 }
 
 export function MobileNavigation() {
-  const mobileRoutes = NAVIGATION_ROUTES.slice(0, 5);
   return (
     <nav className="mobile-navigation" aria-label="پیمایش موبایل">
-      {mobileRoutes.map((route) => (
-        <Link key={route.href} href={route.href}>
-          <span aria-hidden="true">•</span>
-          {route.shortLabel}
-        </Link>
-      ))}
+      <NavigationLinks mobile />
     </nav>
   );
 }

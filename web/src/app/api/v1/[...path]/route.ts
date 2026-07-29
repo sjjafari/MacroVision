@@ -1,4 +1,5 @@
 import { getBackendUrl } from "@/lib/api/backend-url";
+import { rewriteUpstreamRedirect } from "@/lib/api/redirect";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ const RESPONSE_HEADERS = [
   "etag",
   "last-modified",
   "retry-after",
+  "allow",
 ] as const;
 
 type RouteContext = {
@@ -49,6 +51,7 @@ function safeResponseHeaders(upstream: Response): Headers {
 async function proxy(request: Request, context: RouteContext): Promise<Response> {
   try {
     const backend = getBackendUrl();
+    const backendBase = new URL(backend);
     const { path } = await context.params;
     const requestUrl = new URL(request.url);
     const basePath = backend.pathname === "/" ? "" : backend.pathname;
@@ -66,11 +69,28 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
       redirect: "manual",
       cache: "no-store",
     });
+    const headers = safeResponseHeaders(upstream);
+    const location = upstream.headers.get("location");
+    if (location && upstream.status >= 300 && upstream.status < 400) {
+      const safeLocation = rewriteUpstreamRedirect(location, backend, backendBase);
+      if (!safeLocation) {
+        return Response.json(
+          {
+            error: {
+              code: "unsafe_upstream_redirect",
+              message: "تغییر مسیر Backend خارج از محدودهٔ مجاز بود.",
+            },
+          },
+          { status: 502 },
+        );
+      }
+      headers.set("location", safeLocation);
+    }
 
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
-      headers: safeResponseHeaders(upstream),
+      headers,
     });
   } catch (error) {
     const message =

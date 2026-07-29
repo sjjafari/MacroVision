@@ -20,6 +20,8 @@ describe("approved route registry", () => {
 
   it("contains Persian labels and no magazine route", () => {
     expect(NAVIGATION_ROUTES.map((route) => route.label)).toContain("اقتصاد کلان");
+    expect(NAVIGATION_ROUTES).toHaveLength(8);
+    expect(NAVIGATION_ROUTES.every((route) => route.navigation)).toBe(true);
     expect(WEB_ROUTES.some((route) => route.href.includes("magazine"))).toBe(false);
   });
 });

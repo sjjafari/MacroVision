@@ -322,6 +322,13 @@ a {
   color: var(--text-primary);
 }
 
+.sidebar a.navigation-link-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--text-primary);
+  box-shadow: inset 0.22rem 0 0 var(--brand);
+}
+
 .nav-index {
   color: var(--brand);
   font: 700 0.65rem/1.2 Georgia, serif;
@@ -752,6 +759,10 @@ a {
 }
 
 @media (max-width: 68rem) {
+  body {
+    padding-block-end: 5rem;
+  }
+
   .app-shell {
     grid-template:
       "header" var(--header-height)
@@ -763,6 +774,46 @@ a {
     display: none;
   }
 
+  .mobile-navigation {
+    position: fixed;
+    z-index: 20;
+    inset-inline: 0;
+    inset-block-end: 0;
+    display: flex;
+    min-height: 4.35rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    border-block-start: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface-elevated) 92%, transparent);
+    backdrop-filter: blur(18px);
+    scrollbar-width: thin;
+  }
+
+  .mobile-navigation a {
+    position: relative;
+    display: grid;
+    flex: 1 0 5.25rem;
+    min-width: 5.25rem;
+    padding: var(--space-2) var(--space-2);
+    place-items: center;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .mobile-navigation a.navigation-link-active {
+    background: var(--brand-soft);
+    color: var(--text-primary);
+    box-shadow: inset 0 0.22rem 0 var(--brand);
+  }
+
+  .mobile-nav-marker {
+    color: var(--brand);
+    font-size: 1rem;
+    line-height: 1;
+  }
+
   .metric-grid,
   .principles-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -770,10 +821,6 @@ a {
 }
 
 @media (max-width: 48rem) {
-  body {
-    padding-block-end: 4.5rem;
-  }
-
   .global-header {
     padding-inline: var(--space-4);
   }
@@ -819,33 +866,8 @@ a {
     padding: var(--space-4);
   }
 
-  .mobile-navigation {
-    position: fixed;
-    z-index: 20;
-    inset-inline: 0;
-    inset-block-end: 0;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    min-height: 4.35rem;
-    border-block-start: 1px solid var(--border);
-    background: color-mix(in srgb, var(--surface-elevated) 92%, transparent);
-    backdrop-filter: blur(18px);
-  }
-
   .mobile-navigation a {
-    display: grid;
-    min-width: 0;
-    padding: var(--space-2) var(--space-1);
-    place-items: center;
-    color: var(--text-secondary);
     font-size: 0.65rem;
-    font-weight: 700;
-  }
-
-  .mobile-navigation a span {
-    color: var(--brand);
-    font-size: 1rem;
-    line-height: 1;
   }
 }
 
