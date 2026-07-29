@@ -211,6 +211,18 @@ macrovision.db
 macrovision.db-shm
 macrovision.db-wal
 
+# MacroVision Web local and generated output
+.npm-cache/
+web/node_modules/
+web/.next/
+web/coverage/
+web/.env.local
+web/.env.*.local
+web/test-results/
+web/playwright-report/
+!web/src/lib/
+!web/src/lib/**
+
 # PyPI configuration file
 .pypirc
 

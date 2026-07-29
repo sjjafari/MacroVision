@@ -1,0 +1,50 @@
+{
+  "name": "macrovision-web",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": "24.x",
+    "npm": "11.x"
+  },
+  "overrides": {
+    "postcss": "8.5.24",
+    "sharp": "0.35.3"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "api:generate": "openapi-typescript openapi/macrovision.openapi.json -o src/lib/api/generated/schema.ts",
+    "api:check": "node scripts/check-api-drift.mjs",
+    "smoke": "node scripts/production-smoke.mjs",
+    "check": "npm run api:check && npm run lint && npm run typecheck && npm run test:run && npm run build && npm run smoke"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.101.4",
+    "echarts": "6.1.0",
+    "next": "16.2.12",
+    "openapi-fetch": "0.17.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@types/jest-axe": "3.5.9",
+    "@types/node": "20.19.43",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.12",
+    "jest-axe": "11.0.0",
+    "jsdom": "30.0.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}
