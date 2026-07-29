@@ -550,6 +550,20 @@ The architecture and delivery plan for the Persian Web MVP are documented in:
 - [Web MVP architecture](docs/v0.8-web-mvp-architecture.md)
 - [Web route/API map](docs/v0.8-web-mvp-route-api-map.md)
 
-Frontend implementation has not started. MacroVision v0.7.0 remains the stable backend
-release, and the first web release must remain private until authentication,
-authorization, and public-deployment controls exist.
+Frontend foundation implementation has started under [`web/`](web/README.md).
+MacroVision v0.7.0 remains the stable backend release. Phase 1 contains nine Persian
+RTL route shells and no live dashboard data.
+
+With Node.js 24 LTS and npm 11 installed:
+
+```powershell
+cd web
+npm ci
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+See the [web setup and verification guide](web/README.md) for API generation, tests,
+and production smoke checks. No public deployment is approved: the web application
+must remain private until authentication, authorization, publication controls, and
+the public-deployment security gates exist.

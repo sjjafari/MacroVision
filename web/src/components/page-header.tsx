@@ -1,0 +1,30 @@
+type PageHeaderProps = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  phase: number;
+  privateOnly?: boolean;
+};
+
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  phase,
+  privateOnly = false,
+}: PageHeaderProps) {
+  return (
+    <header className="page-header">
+      <div>
+        <p className="eyebrow">{eyebrow}</p>
+        <h1>{title}</h1>
+        <p className="page-description">{description}</p>
+      </div>
+      <div className="phase-chip" aria-label={`مرحله تحویل ${phase}`}>
+        <span>فاز</span>
+        <b className="ltr">{phase}</b>
+        {privateOnly && <em>خصوصی</em>}
+      </div>
+    </header>
+  );
+}
