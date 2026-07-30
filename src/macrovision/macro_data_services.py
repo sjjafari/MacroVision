@@ -518,6 +518,34 @@ def observations_as_of(
     )
 
 
+def latest_effective_observations(
+    session: Session,
+    series_id: int,
+    *,
+    as_of: datetime | None = None,
+    limit: int = 2,
+) -> list[schemas.ObservationRead]:
+    """Return the newest effective raw observations at one knowledge cutoff."""
+    get_series(session, series_id)
+    if limit < 1 or limit > 200:
+        raise ValueError("limit must be between 1 and 200")
+    statement = _observation_statement().where(models.DataObservation.series_id == series_id)
+    if as_of is not None:
+        statement = statement.where(
+            models.DataObservation.ingestion_timestamp <= as_of,
+            models.DataObservation.observed_at <= as_of,
+        )
+    observations = list(
+        session.scalars(
+            statement.order_by(
+                models.DataObservation.observed_at.desc(),
+                models.DataObservation.id.desc(),
+            ).limit(limit)
+        ).unique()
+    )
+    return [observation_to_read(item, as_of=as_of) for item in observations]
+
+
 def list_revisions(
     session: Session,
     series_id: int,
