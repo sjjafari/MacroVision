@@ -100,6 +100,198 @@ def test_sources_series_pagination_and_optimistic_patch(client: TestClient) -> N
     assert client.get(f"/api/v1/data-series/{series['id']}").json()["name"] != "Stale"
 
 
+def test_series_catalog_filters_are_combined_and_paginated_after_filtering(
+    client: TestClient,
+) -> None:
+    first_source = create_source(client, "FILTER_A")
+    second_source = create_source(client, "FILTER_B")
+    first = create_series(
+        client,
+        first_source["id"],
+        code="FILTER.CPI.A",
+        extra={
+            "name": "Consumer prices alpha",
+            "description": "Headline basket with 100% coverage",
+            "category": "inflation",
+            "geography": "US",
+            "frequency": "monthly",
+            "is_active": True,
+        },
+    )
+    second = create_series(
+        client,
+        first_source["id"],
+        code="FILTER.CPI.B",
+        extra={
+            "name": "Consumer prices beta",
+            "description": "Core basket",
+            "category": "inflation",
+            "geography": "US",
+            "frequency": "monthly",
+            "is_active": False,
+        },
+    )
+    third = create_series(
+        client,
+        second_source["id"],
+        code="FILTER.JOBS",
+        extra={
+            "name": "Employment report",
+            "description": "Labor market",
+            "category": "employment",
+            "geography": "CA",
+            "frequency": "weekly",
+            "is_active": True,
+        },
+    )
+
+    unfiltered = client.get("/api/v1/data-series").json()
+    assert [item["id"] for item in unfiltered] == [first["id"], second["id"], third["id"]]
+    assert client.get("/api/v1/data-series", params={"code": "FILTER.CPI.B"}).json() == [second]
+    assert [
+        item["id"]
+        for item in client.get("/api/v1/data-series", params={"search": "consumer PRICES"}).json()
+    ] == [first["id"], second["id"]]
+    assert client.get("/api/v1/data-series", params={"search": "headline"}).json() == [first]
+    assert client.get("/api/v1/data-series", params={"search": "100%"}).json() == [first]
+    assert client.get("/api/v1/data-series", params={"search": "%"}).json() == [first]
+    assert client.get("/api/v1/data-series", params={"category": "employment"}).json() == [third]
+    assert client.get("/api/v1/data-series", params={"geography": "CA"}).json() == [third]
+    assert client.get("/api/v1/data-series", params={"frequency": "weekly"}).json() == [third]
+    assert client.get("/api/v1/data-series", params={"source_id": second_source["id"]}).json() == [
+        third
+    ]
+    assert client.get("/api/v1/data-series", params={"is_active": False}).json() == [second]
+    combined = client.get(
+        "/api/v1/data-series",
+        params={
+            "search": "consumer",
+            "category": "inflation",
+            "geography": "US",
+            "frequency": "monthly",
+            "source_id": first_source["id"],
+            "is_active": True,
+        },
+    )
+    assert combined.json() == [first]
+    assert client.get(
+        "/api/v1/data-series",
+        params={"category": "inflation", "limit": 1, "offset": 1},
+    ).json() == [second]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"source_id": 0},
+        {"search": " "},
+        {"search": "x" * 121},
+        {"code": "not valid"},
+        {"category": "not_a_category"},
+    ],
+)
+def test_series_catalog_rejects_invalid_filters(
+    client: TestClient, params: dict[str, object]
+) -> None:
+    assert client.get("/api/v1/data-series", params=params).status_code == 422
+
+
+def test_current_and_as_of_observation_ranges_are_inclusive_and_utc_normalized(
+    client: TestClient,
+) -> None:
+    series = create_series(client, create_source(client, "RANGE")["id"])
+    for month, value in ((1, "1.00000001"), (2, None), (3, "1234567890.12345678")):
+        response = client.post(
+            f"/api/v1/data-series/{series['id']}/observations",
+            json=observation_payload(
+                f"2026-{month:02d}-01T00:00:00Z",
+                f"2026-{month:02d}-10T00:00:00Z",
+                value,
+            ),
+        )
+        assert response.status_code == 201, response.text
+
+    endpoint = f"/api/v1/data-series/{series['id']}/observations"
+    assert [
+        item["value"]
+        for item in client.get(
+            endpoint,
+            params={
+                "start": "2026-02-01T03:30:00+03:30",
+                "end": "2026-03-01T00:00:00Z",
+            },
+        ).json()
+    ] == [None, "1234567890.12345678"]
+    assert len(client.get(endpoint, params={"start": "2026-03-01T00:00:00Z"}).json()) == 1
+    assert len(client.get(endpoint, params={"end": "2026-01-01T00:00:00Z"}).json()) == 1
+    exact = client.get(
+        endpoint,
+        params={
+            "start": "2026-02-01T00:00:00Z",
+            "end": "2026-02-01T00:00:00Z",
+        },
+    )
+    assert [item["status"] for item in exact.json()] == ["missing"]
+    assert (
+        len(
+            client.get(
+                endpoint,
+                params={
+                    "start": "2026-01-01T00:00:00Z",
+                    "end": "2026-03-01T00:00:00Z",
+                    "limit": 1,
+                    "offset": 1,
+                },
+            ).json()
+        )
+        == 1
+    )
+
+    as_of = f"{endpoint}/as-of"
+    bounded_as_of = client.get(
+        as_of,
+        params={
+            "as_of": "2026-08-01T00:00:00Z",
+            "start": "2026-02-01T00:00:00Z",
+            "end": "2026-03-01T00:00:00Z",
+        },
+    )
+    assert [item["value"] for item in bounded_as_of.json()] == [
+        None,
+        "1234567890.12345678",
+    ]
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["observations", "observations/as-of"],
+)
+def test_observation_ranges_reject_naive_and_reversed_timestamps(
+    client: TestClient, path: str
+) -> None:
+    series = create_series(client, create_source(client, f"BAD_RANGE_{path[-1]}")["id"])
+    endpoint = f"/api/v1/data-series/{series['id']}/{path}"
+    common = {"as_of": "2026-04-01T00:00:00Z"} if path.endswith("as-of") else {}
+    assert (
+        client.get(
+            endpoint,
+            params={**common, "start": "2026-01-01T00:00:00"},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.get(
+            endpoint,
+            params={
+                **common,
+                "start": "2026-03-01T00:00:00Z",
+                "end": "2026-01-01T00:00:00Z",
+            },
+        ).status_code
+        == 422
+    )
+
+
 def test_series_uniqueness_validation_and_missing_resources(client: TestClient) -> None:
     source = create_source(client)
     create_series(client, source["id"])

@@ -97,7 +97,8 @@ jobs:
           tests/test_analytics_postgresql.py
           tests/test_analytics_api_postgresql.py
           tests/test_analytics_benchmark.py
-          tests/test_analytics_concurrency.py --no-cov
+          tests/test_analytics_concurrency.py
+          tests/test_dashboard_postgresql.py --no-cov
 
   frontend:
     runs-on: ubuntu-latest

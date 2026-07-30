@@ -545,6 +545,894 @@
         "title": "CriticReviewRead",
         "type": "object"
       },
+      "DashboardCode": {
+        "enum": [
+          "home",
+          "markets",
+          "macro"
+        ],
+        "title": "DashboardCode",
+        "type": "string"
+      },
+      "DashboardComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "absolute_change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Absolute Change"
+          },
+          "anchor_policy": {
+            "$ref": "#/components/schemas/DashboardComparisonAnchorPolicy"
+          },
+          "basis_code": {
+            "title": "Basis Code",
+            "type": "string"
+          },
+          "basis_label_fa": {
+            "title": "Basis Label Fa",
+            "type": "string"
+          },
+          "current_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Observed At"
+          },
+          "derived_calculation_cutoff": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Calculation Cutoff"
+          },
+          "derived_completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Completed At"
+          },
+          "derived_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DerivedDashboardIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "derived_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Observed At"
+          },
+          "derived_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Value"
+          },
+          "percentage_change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage Change"
+          },
+          "reference_observation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Observation Id"
+          },
+          "reference_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Observed At"
+          },
+          "reference_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Value"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DashboardComparisonState"
+          },
+          "state_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Reason"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DashboardComparisonType"
+          }
+        },
+        "required": [
+          "type",
+          "basis_code",
+          "basis_label_fa",
+          "anchor_policy",
+          "state",
+          "state_reason"
+        ],
+        "title": "DashboardComparison",
+        "type": "object"
+      },
+      "DashboardComparisonAnchorPolicy": {
+        "enum": [
+          "not_applicable",
+          "previous_observation",
+          "same_observed_at"
+        ],
+        "title": "DashboardComparisonAnchorPolicy",
+        "type": "string"
+      },
+      "DashboardComparisonDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor_policy": {
+            "$ref": "#/components/schemas/DashboardComparisonAnchorPolicy"
+          },
+          "basis_code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Basis Code",
+            "type": "string"
+          },
+          "basis_label_fa": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis Label Fa",
+            "type": "string"
+          },
+          "derived_definition_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "pattern": "^[A-Z][A-Z0-9_.-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Definition Code"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DashboardComparisonType"
+          }
+        },
+        "required": [
+          "type",
+          "basis_code",
+          "basis_label_fa",
+          "anchor_policy"
+        ],
+        "title": "DashboardComparisonDefinition",
+        "type": "object"
+      },
+      "DashboardComparisonState": {
+        "enum": [
+          "available",
+          "missing",
+          "incomparable",
+          "frequency_mismatch"
+        ],
+        "title": "DashboardComparisonState",
+        "type": "string"
+      },
+      "DashboardComparisonType": {
+        "enum": [
+          "none",
+          "previous_observation",
+          "existing_derived_metric"
+        ],
+        "title": "DashboardComparisonType",
+        "type": "string"
+      },
+      "DashboardDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "dashboard_code": {
+            "$ref": "#/components/schemas/DashboardCode"
+          },
+          "description_fa": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Description Fa",
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardGroupDefinition"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Groups",
+            "type": "array"
+          },
+          "title_fa": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dashboard_code",
+          "title_fa",
+          "description_fa",
+          "groups"
+        ],
+        "title": "DashboardDefinition",
+        "type": "object"
+      },
+      "DashboardFreshness": {
+        "additionalProperties": false,
+        "properties": {
+          "age_basis": {
+            "$ref": "#/components/schemas/DashboardFreshnessAgeBasis"
+          },
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/DashboardFreshnessPolicyType"
+          },
+          "stale_after_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale After Days"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DashboardFreshnessStatus"
+          }
+        },
+        "required": [
+          "policy",
+          "status",
+          "stale_after_days",
+          "age_basis",
+          "evaluated_at"
+        ],
+        "title": "DashboardFreshness",
+        "type": "object"
+      },
+      "DashboardFreshnessAgeBasis": {
+        "enum": [
+          "observed_at",
+          "analytics_completed_at",
+          "not_applicable"
+        ],
+        "title": "DashboardFreshnessAgeBasis",
+        "type": "string"
+      },
+      "DashboardFreshnessPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "age_basis": {
+            "$ref": "#/components/schemas/DashboardFreshnessAgeBasis"
+          },
+          "stale_after_days": {
+            "anyOf": [
+              {
+                "maximum": 36500.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale After Days"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DashboardFreshnessPolicyType"
+          }
+        },
+        "required": [
+          "type",
+          "age_basis"
+        ],
+        "title": "DashboardFreshnessPolicy",
+        "type": "object"
+      },
+      "DashboardFreshnessPolicyType": {
+        "enum": [
+          "raw_series_stale_after_days",
+          "explicit_stale_after_days",
+          "not_configured"
+        ],
+        "title": "DashboardFreshnessPolicyType",
+        "type": "string"
+      },
+      "DashboardFreshnessStatus": {
+        "enum": [
+          "current",
+          "stale",
+          "not_configured",
+          "unavailable"
+        ],
+        "title": "DashboardFreshnessStatus",
+        "type": "string"
+      },
+      "DashboardGroupCode": {
+        "enum": [
+          "inflation",
+          "interest_rates",
+          "labor_market",
+          "economic_growth",
+          "liquidity_money",
+          "yield_curve",
+          "currencies",
+          "commodities_energy",
+          "financial_conditions",
+          "geopolitical_risk"
+        ],
+        "title": "DashboardGroupCode",
+        "type": "string"
+      },
+      "DashboardGroupDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "group_code": {
+            "$ref": "#/components/schemas/DashboardGroupCode"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardMetricDefinition"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Metrics",
+            "type": "array"
+          },
+          "title_fa": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_code",
+          "title_fa",
+          "metrics"
+        ],
+        "title": "DashboardGroupDefinition",
+        "type": "object"
+      },
+      "DashboardGroupSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "group_code": {
+            "$ref": "#/components/schemas/DashboardGroupCode"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardMetricSummary"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_code",
+          "title_fa",
+          "metrics"
+        ],
+        "title": "DashboardGroupSummary",
+        "type": "object"
+      },
+      "DashboardMetricDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "$ref": "#/components/schemas/DashboardComparisonDefinition"
+          },
+          "derived_definition_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "pattern": "^[A-Z][A-Z0-9_.-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derived Definition Code"
+          },
+          "featured_chart": {
+            "default": false,
+            "title": "Featured Chart",
+            "type": "boolean"
+          },
+          "freshness_policy": {
+            "$ref": "#/components/schemas/DashboardFreshnessPolicy"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DashboardMetricKind"
+          },
+          "label_fa": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Label Fa",
+            "type": "string"
+          },
+          "localized_unit_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Localized Unit Label"
+          },
+          "metric_key": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Metric Key",
+            "type": "string"
+          },
+          "raw_series_code": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Series Code"
+          },
+          "subtitle_fa": {
+            "anyOf": [
+              {
+                "maxLength": 240,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Fa"
+          }
+        },
+        "required": [
+          "metric_key",
+          "kind",
+          "label_fa",
+          "comparison",
+          "freshness_policy"
+        ],
+        "title": "DashboardMetricDefinition",
+        "type": "object"
+      },
+      "DashboardMetricKind": {
+        "enum": [
+          "raw",
+          "derived"
+        ],
+        "title": "DashboardMetricKind",
+        "type": "string"
+      },
+      "DashboardMetricState": {
+        "enum": [
+          "available",
+          "missing",
+          "stale"
+        ],
+        "title": "DashboardMetricState",
+        "type": "string"
+      },
+      "DashboardMetricSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "analytics_completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analytics Completed At"
+          },
+          "calculation_cutoff": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Cutoff"
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/DashboardComparison"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "derived_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DerivedDashboardIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataFrequency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/DashboardFreshness"
+          },
+          "geography": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DashboardMetricKind"
+          },
+          "knowledge_cutoff": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Cutoff"
+          },
+          "label_fa": {
+            "title": "Label Fa",
+            "type": "string"
+          },
+          "localized_unit_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Localized Unit Label"
+          },
+          "metric_key": {
+            "title": "Metric Key",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "raw_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RawDashboardIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DashboardSourceAttribution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_publication_timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Publication Timestamp"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DashboardMetricState"
+          },
+          "state_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Reason"
+          },
+          "subtitle_fa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Fa"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "metric_key",
+          "kind",
+          "label_fa",
+          "subtitle_fa",
+          "state",
+          "state_reason",
+          "value",
+          "unit",
+          "localized_unit_label",
+          "frequency",
+          "geography",
+          "currency",
+          "observed_at",
+          "source_publication_timestamp",
+          "knowledge_cutoff",
+          "calculation_cutoff",
+          "analytics_completed_at",
+          "source",
+          "comparison",
+          "freshness",
+          "raw_identity",
+          "derived_identity"
+        ],
+        "title": "DashboardMetricSummary",
+        "type": "object"
+      },
+      "DashboardSourceAttribution": {
+        "additionalProperties": false,
+        "properties": {
+          "reference_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Url"
+          },
+          "source_code": {
+            "title": "Source Code",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          }
+        },
+        "required": [
+          "source_id",
+          "source_code",
+          "source_name",
+          "reference_url",
+          "source_reference"
+        ],
+        "title": "DashboardSourceAttribution",
+        "type": "object"
+      },
+      "DashboardSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "dashboard_code": {
+            "$ref": "#/components/schemas/DashboardCode"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardGroupSummary"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "latest_knowledge_cutoff": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Knowledge Cutoff"
+          },
+          "stale_metric_count": {
+            "title": "Stale Metric Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dashboard_code",
+          "generated_at",
+          "latest_knowledge_cutoff",
+          "stale_metric_count",
+          "groups"
+        ],
+        "title": "DashboardSummary",
+        "type": "object"
+      },
       "DataFrequency": {
         "enum": [
           "daily",
@@ -1765,6 +2653,68 @@
         ],
         "title": "DecisionStatus",
         "type": "string"
+      },
+      "DerivedDashboardIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "definition_code": {
+            "title": "Definition Code",
+            "type": "string"
+          },
+          "definition_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Id"
+          },
+          "definition_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Version"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "definition_id",
+          "definition_code",
+          "definition_version",
+          "run_id",
+          "observation_id"
+        ],
+        "title": "DerivedDashboardIdentity",
+        "type": "object"
       },
       "DerivedObservationLineagePage": {
         "additionalProperties": false,
@@ -4871,6 +5821,44 @@
         "title": "QualityIssueType",
         "type": "string"
       },
+      "RawDashboardIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "observation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "series_code": {
+            "title": "Series Code",
+            "type": "string"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          }
+        },
+        "required": [
+          "series_id",
+          "series_code",
+          "observation_id"
+        ],
+        "title": "RawDashboardIdentity",
+        "type": "object"
+      },
       "RebaseIndexParameters-Input": {
         "additionalProperties": false,
         "properties": {
@@ -6164,6 +7152,185 @@
         ]
       }
     },
+    "/api/v1/dashboards": {
+      "get": {
+        "operationId": "list_dashboards_api_v1_dashboards_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardDefinition"
+                  },
+                  "title": "Response List Dashboards Api V1 Dashboards Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "List Dashboards",
+        "tags": [
+          "private dashboards"
+        ]
+      }
+    },
+    "/api/v1/dashboards/{dashboard_code}": {
+      "get": {
+        "operationId": "get_dashboard_api_v1_dashboards__dashboard_code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_code",
+            "required": true,
+            "schema": {
+              "title": "Dashboard Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDefinition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Get Dashboard",
+        "tags": [
+          "private dashboards"
+        ]
+      }
+    },
+    "/api/v1/dashboards/{dashboard_code}/summary": {
+      "get": {
+        "operationId": "dashboard_summary_api_v1_dashboards__dashboard_code__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_code",
+            "required": true,
+            "schema": {
+              "title": "Dashboard Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Dashboard Summary",
+        "tags": [
+          "private dashboards"
+        ]
+      }
+    },
     "/api/v1/data-imports": {
       "get": {
         "operationId": "list_imports_api_v1_data_imports_get",
@@ -6817,6 +7984,126 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9_.-]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SeriesCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geography",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geography"
+            }
+          },
+          {
+            "in": "query",
+            "name": "frequency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DataFrequency"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Frequency"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
           }
         ],
         "responses": {
@@ -7139,6 +8426,40 @@
           },
           {
             "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -7304,6 +8625,40 @@
               "format": "date-time",
               "title": "As Of",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
             }
           },
           {

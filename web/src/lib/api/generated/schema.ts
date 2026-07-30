@@ -72,6 +72,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dashboards */
+        get: operations["list_dashboards_api_v1_dashboards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboards/{dashboard_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dashboard */
+        get: operations["get_dashboard_api_v1_dashboards__dashboard_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboards/{dashboard_code}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard Summary */
+        get: operations["dashboard_summary_api_v1_dashboards__dashboard_code__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/data-imports": {
         parameters: {
             query?: never;
@@ -1268,6 +1319,236 @@ export interface components {
             reviewer: string;
         };
         /**
+         * DashboardCode
+         * @enum {string}
+         */
+        DashboardCode: "home" | "markets" | "macro";
+        /** DashboardComparison */
+        DashboardComparison: {
+            /** Absolute Change */
+            absolute_change?: string | null;
+            anchor_policy: components["schemas"]["DashboardComparisonAnchorPolicy"];
+            /** Basis Code */
+            basis_code: string;
+            /** Basis Label Fa */
+            basis_label_fa: string;
+            /** Current Observed At */
+            current_observed_at?: string | null;
+            /** Derived Calculation Cutoff */
+            derived_calculation_cutoff?: string | null;
+            /** Derived Completed At */
+            derived_completed_at?: string | null;
+            derived_identity?: components["schemas"]["DerivedDashboardIdentity"] | null;
+            /** Derived Observed At */
+            derived_observed_at?: string | null;
+            /** Derived Value */
+            derived_value?: string | null;
+            /** Percentage Change */
+            percentage_change?: string | null;
+            /** Reference Observation Id */
+            reference_observation_id?: number | null;
+            /** Reference Observed At */
+            reference_observed_at?: string | null;
+            /** Reference Value */
+            reference_value?: string | null;
+            state: components["schemas"]["DashboardComparisonState"];
+            /** State Reason */
+            state_reason: string | null;
+            type: components["schemas"]["DashboardComparisonType"];
+        };
+        /**
+         * DashboardComparisonAnchorPolicy
+         * @enum {string}
+         */
+        DashboardComparisonAnchorPolicy: "not_applicable" | "previous_observation" | "same_observed_at";
+        /** DashboardComparisonDefinition */
+        DashboardComparisonDefinition: {
+            anchor_policy: components["schemas"]["DashboardComparisonAnchorPolicy"];
+            /** Basis Code */
+            basis_code: string;
+            /** Basis Label Fa */
+            basis_label_fa: string;
+            /** Derived Definition Code */
+            derived_definition_code?: string | null;
+            type: components["schemas"]["DashboardComparisonType"];
+        };
+        /**
+         * DashboardComparisonState
+         * @enum {string}
+         */
+        DashboardComparisonState: "available" | "missing" | "incomparable" | "frequency_mismatch";
+        /**
+         * DashboardComparisonType
+         * @enum {string}
+         */
+        DashboardComparisonType: "none" | "previous_observation" | "existing_derived_metric";
+        /** DashboardDefinition */
+        DashboardDefinition: {
+            dashboard_code: components["schemas"]["DashboardCode"];
+            /** Description Fa */
+            description_fa: string;
+            /** Groups */
+            groups: components["schemas"]["DashboardGroupDefinition"][];
+            /** Title Fa */
+            title_fa: string;
+        };
+        /** DashboardFreshness */
+        DashboardFreshness: {
+            age_basis: components["schemas"]["DashboardFreshnessAgeBasis"];
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            policy: components["schemas"]["DashboardFreshnessPolicyType"];
+            /** Stale After Days */
+            stale_after_days: number | null;
+            status: components["schemas"]["DashboardFreshnessStatus"];
+        };
+        /**
+         * DashboardFreshnessAgeBasis
+         * @enum {string}
+         */
+        DashboardFreshnessAgeBasis: "observed_at" | "analytics_completed_at" | "not_applicable";
+        /** DashboardFreshnessPolicy */
+        DashboardFreshnessPolicy: {
+            age_basis: components["schemas"]["DashboardFreshnessAgeBasis"];
+            /** Stale After Days */
+            stale_after_days?: number | null;
+            type: components["schemas"]["DashboardFreshnessPolicyType"];
+        };
+        /**
+         * DashboardFreshnessPolicyType
+         * @enum {string}
+         */
+        DashboardFreshnessPolicyType: "raw_series_stale_after_days" | "explicit_stale_after_days" | "not_configured";
+        /**
+         * DashboardFreshnessStatus
+         * @enum {string}
+         */
+        DashboardFreshnessStatus: "current" | "stale" | "not_configured" | "unavailable";
+        /**
+         * DashboardGroupCode
+         * @enum {string}
+         */
+        DashboardGroupCode: "inflation" | "interest_rates" | "labor_market" | "economic_growth" | "liquidity_money" | "yield_curve" | "currencies" | "commodities_energy" | "financial_conditions" | "geopolitical_risk";
+        /** DashboardGroupDefinition */
+        DashboardGroupDefinition: {
+            group_code: components["schemas"]["DashboardGroupCode"];
+            /** Metrics */
+            metrics: components["schemas"]["DashboardMetricDefinition"][];
+            /** Title Fa */
+            title_fa: string;
+        };
+        /** DashboardGroupSummary */
+        DashboardGroupSummary: {
+            group_code: components["schemas"]["DashboardGroupCode"];
+            /** Metrics */
+            metrics: components["schemas"]["DashboardMetricSummary"][];
+            /** Title Fa */
+            title_fa: string;
+        };
+        /** DashboardMetricDefinition */
+        DashboardMetricDefinition: {
+            comparison: components["schemas"]["DashboardComparisonDefinition"];
+            /** Derived Definition Code */
+            derived_definition_code?: string | null;
+            /**
+             * Featured Chart
+             * @default false
+             */
+            featured_chart: boolean;
+            freshness_policy: components["schemas"]["DashboardFreshnessPolicy"];
+            kind: components["schemas"]["DashboardMetricKind"];
+            /** Label Fa */
+            label_fa: string;
+            /** Localized Unit Label */
+            localized_unit_label?: string | null;
+            /** Metric Key */
+            metric_key: string;
+            /** Raw Series Code */
+            raw_series_code?: string | null;
+            /** Subtitle Fa */
+            subtitle_fa?: string | null;
+        };
+        /**
+         * DashboardMetricKind
+         * @enum {string}
+         */
+        DashboardMetricKind: "raw" | "derived";
+        /**
+         * DashboardMetricState
+         * @enum {string}
+         */
+        DashboardMetricState: "available" | "missing" | "stale";
+        /** DashboardMetricSummary */
+        DashboardMetricSummary: {
+            /** Analytics Completed At */
+            analytics_completed_at: string | null;
+            /** Calculation Cutoff */
+            calculation_cutoff: string | null;
+            comparison: components["schemas"]["DashboardComparison"];
+            /** Currency */
+            currency: string | null;
+            derived_identity: components["schemas"]["DerivedDashboardIdentity"] | null;
+            frequency: components["schemas"]["DataFrequency"] | null;
+            freshness: components["schemas"]["DashboardFreshness"];
+            /** Geography */
+            geography: string | null;
+            kind: components["schemas"]["DashboardMetricKind"];
+            /** Knowledge Cutoff */
+            knowledge_cutoff: string | null;
+            /** Label Fa */
+            label_fa: string;
+            /** Localized Unit Label */
+            localized_unit_label: string | null;
+            /** Metric Key */
+            metric_key: string;
+            /** Observed At */
+            observed_at: string | null;
+            raw_identity: components["schemas"]["RawDashboardIdentity"] | null;
+            source: components["schemas"]["DashboardSourceAttribution"] | null;
+            /** Source Publication Timestamp */
+            source_publication_timestamp: string | null;
+            state: components["schemas"]["DashboardMetricState"];
+            /** State Reason */
+            state_reason: string | null;
+            /** Subtitle Fa */
+            subtitle_fa: string | null;
+            /** Unit */
+            unit: string | null;
+            /** Value */
+            value: string | null;
+        };
+        /** DashboardSourceAttribution */
+        DashboardSourceAttribution: {
+            /** Reference Url */
+            reference_url: string | null;
+            /** Source Code */
+            source_code: string;
+            /** Source Id */
+            source_id: number;
+            /** Source Name */
+            source_name: string;
+            /** Source Reference */
+            source_reference: string | null;
+        };
+        /** DashboardSummary */
+        DashboardSummary: {
+            dashboard_code: components["schemas"]["DashboardCode"];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Groups */
+            groups: components["schemas"]["DashboardGroupSummary"][];
+            /** Latest Knowledge Cutoff */
+            latest_knowledge_cutoff: string | null;
+            /** Stale Metric Count */
+            stale_metric_count: number;
+        };
+        /**
          * DataFrequency
          * @enum {string}
          */
@@ -1657,6 +1938,19 @@ export interface components {
          * @enum {string}
          */
         DecisionStatus: "draft" | "under_review" | "active" | "invalidated" | "closed";
+        /** DerivedDashboardIdentity */
+        DerivedDashboardIdentity: {
+            /** Definition Code */
+            definition_code: string;
+            /** Definition Id */
+            definition_id: number | null;
+            /** Definition Version */
+            definition_version: number | null;
+            /** Observation Id */
+            observation_id: number | null;
+            /** Run Id */
+            run_id: number | null;
+        };
         /** DerivedObservationLineagePage */
         DerivedObservationLineagePage: {
             /** Items */
@@ -2675,6 +2969,15 @@ export interface components {
          * @enum {string}
          */
         QualityIssueType: "duplicate_observation" | "impossible_timestamp" | "frequency_violation" | "invalid_numeric_range" | "stale_series" | "large_unexpected_change";
+        /** RawDashboardIdentity */
+        RawDashboardIdentity: {
+            /** Observation Id */
+            observation_id: number | null;
+            /** Series Code */
+            series_code: string;
+            /** Series Id */
+            series_id: number | null;
+        };
         /** RebaseIndexParameters */
         "RebaseIndexParameters-Input": {
             /**
@@ -3182,6 +3485,151 @@ export interface operations {
             };
         };
     };
+    list_dashboards_api_v1_dashboards_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDefinition"][];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_dashboard_api_v1_dashboards__dashboard_code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDefinition"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    dashboard_summary_api_v1_dashboards__dashboard_code__summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_imports_api_v1_data_imports_get: {
         parameters: {
             query?: {
@@ -3641,6 +4089,13 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                search?: string | null;
+                code?: string | null;
+                category?: components["schemas"]["SeriesCategory"] | null;
+                geography?: string | null;
+                frequency?: components["schemas"]["DataFrequency"] | null;
+                source_id?: number | null;
+                is_active?: boolean | null;
             };
             header?: never;
             path?: never;
@@ -3891,6 +4346,8 @@ export interface operations {
     list_observations_api_v1_data_series__series_id__observations_get: {
         parameters: {
             query?: {
+                start?: string | null;
+                end?: string | null;
                 limit?: number;
                 offset?: number;
             };
@@ -3997,6 +4454,8 @@ export interface operations {
         parameters: {
             query: {
                 as_of: string;
+                start?: string | null;
+                end?: string | null;
                 limit?: number;
                 offset?: number;
             };

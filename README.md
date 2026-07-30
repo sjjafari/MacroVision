@@ -552,7 +552,41 @@ The architecture and delivery plan for the Persian Web MVP are documented in:
 
 Frontend foundation implementation has started under [`web/`](web/README.md).
 MacroVision v0.7.0 remains the stable backend release. Phase 1 contains nine Persian
-RTL route shells and no live dashboard data.
+RTL route shells. Web MVP Phase 2A adds private, read-only backend contracts without
+wiring live data into those route shells:
+
+- `GET /api/v1/dashboards` lists the validated `home`, `markets`, and `macro`
+  dashboard definitions in deterministic order.
+- `GET /api/v1/dashboards/{dashboard_code}` returns the curated metric configuration.
+- `GET /api/v1/dashboards/{dashboard_code}/summary` returns persisted raw and derived
+  values, exact Decimal strings, source and point identity, freshness, explicit
+  missing/incomparable states, and backend-computed comparisons. It never triggers an
+  Analytics run.
+- `GET /api/v1/data-series` supports deterministic AND-combined catalog filters:
+  `search`, `code`, `category`, `geography`, `frequency`, `source_id`, and `is_active`.
+- Current and as-of raw observation lists accept inclusive aware-UTC `start` and `end`
+  bounds while preserving revision-vintage semantics.
+
+Dashboard configuration is reviewed, code-based application configuration; it contains
+no database IDs. Missing configured series stay visible as missing metrics rather than
+being silently removed. The contracts are private preview APIs, not publication
+approval, and no authentication or authorization is added in this phase.
+
+Metric state describes only the selected point: `missing` when no present value exists,
+`stale` when its freshness policy says it is stale, and `available` otherwise.
+Comparison state independently reports `available`, `missing`, `incomparable`, or
+`frequency_mismatch`; an unavailable comparison never erases a valid current value.
+`basis_code` is the stable comparison-period code, while `anchor_policy` specifies how
+points are joined. Persisted derived comparisons require `same_observed_at` after UTC
+normalization and never align, fill, resample, or shift a nearby point.
+
+Raw freshness uses the series' reviewed `stale_after_days` threshold. Curated derived
+metrics currently declare freshness `not_configured` rather than borrowing a raw-series
+policy or inventing a threshold. `stale_metric_count` counts freshness objects whose
+status is `stale`, independently of comparison completeness. Absolute and percentage
+changes are exact eight-decimal, half-even Decimal values; a non-representable result
+returns an `incomparable` comparison with null calculated fields instead of failing the
+summary request.
 
 With Node.js 24 LTS and npm 11 installed:
 
