@@ -30,6 +30,19 @@ function validateContract(
   const definitionGroups = definition.groups.map((group) => group.group_code);
   const summaryGroups = summary.groups.map((group) => group.group_code);
   if (!uniqueKeys(definitionGroups) || !uniqueKeys(summaryGroups)) return false;
+  const allDefinitionMetrics = definition.groups.flatMap((group) =>
+    group.metrics.map((metric) => metric.metric_key),
+  );
+  const allSummaryMetrics = summary.groups.flatMap((group) =>
+    group.metrics.map((metric) => metric.metric_key),
+  );
+  if (!uniqueKeys(allDefinitionMetrics) || !uniqueKeys(allSummaryMetrics)) {
+    return false;
+  }
+  const featuredMetrics = definition.groups
+    .flatMap((group) => group.metrics)
+    .filter((metric) => metric.featured_chart);
+  if (featuredMetrics.length > 1) return false;
   if (
     definitionGroups.length !== summaryGroups.length ||
     definitionGroups.some((group) => !summaryGroups.includes(group))
@@ -58,15 +71,53 @@ function featuredMetric(
   definition: DashboardDefinition,
   summary: DashboardSummary,
 ): [DashboardMetricDefinition, DashboardMetricSummary] | null {
-  const configured = definition.groups
-    .flatMap((group) => group.metrics)
-    .filter((metric) => metric.featured_chart);
+  const configured = definition.groups.flatMap((group) =>
+    group.metrics
+      .filter((metric) => metric.featured_chart)
+      .map((metric) => ({ groupCode: group.group_code, metric })),
+  );
   if (configured.length !== 1) return null;
-  const metric = configured[0];
+  const { groupCode, metric } = configured[0];
   const resolved = summary.groups
-    .flatMap((group) => group.metrics)
-    .find((candidate) => candidate.metric_key === metric.metric_key);
+    .find((group) => group.group_code === groupCode)
+    ?.metrics.find((candidate) => candidate.metric_key === metric.metric_key);
   return resolved ? [metric, resolved] : null;
+}
+
+function normalizeChartPoints(
+  points: Array<{ observed_at: string; value: string | null; status: string }>,
+): ChartPoint[] {
+  return points.map((point) => ({
+    observedAt: point.observed_at,
+    exactValue: point.value,
+    status: point.status === "present" ? "present" : "missing",
+  }));
+}
+
+function chartFromPoints(
+  metric: DashboardMetricSummary,
+  window: { start: string; end: string },
+  points: ChartPoint[],
+): FeaturedChartData {
+  if (points.length === 0) {
+    return { status: "empty", reason: "chart_observations_empty" };
+  }
+  if (
+    !points.some(
+      (point) => point.status === "present" && point.exactValue !== null,
+    )
+  ) {
+    return { status: "empty", reason: "chart_has_no_present_values" };
+  }
+  return {
+    status: "available",
+    metricKey: metric.metric_key,
+    title: metric.label_fa,
+    sourceLabel: metric.source?.source_name ?? null,
+    start: window.start,
+    end: window.end,
+    points,
+  };
 }
 
 export function chartWindow(
@@ -107,38 +158,35 @@ async function loadFeaturedChart(
         window.end,
       );
       if (!response.data) return { status: "error", reason: "chart_read_failed" };
-      points = response.data.map((point) => ({
-        observedAt: point.observed_at,
-        exactValue: point.value,
-        status: point.status,
-      }));
-    } else if (
-      configured.kind === "derived" &&
-      metric.derived_identity?.definition_id
-    ) {
-      const response = await transport.derivedObservations(
-        metric.derived_identity.definition_id,
+      points = normalizeChartPoints(response.data);
+    } else if (configured.kind === "derived") {
+      const identity = metric.derived_identity;
+      if (
+        !identity ||
+        identity.definition_id === null ||
+        identity.definition_version === null ||
+        identity.run_id === null
+      ) {
+        return { status: "empty", reason: "featured_metric_identity_missing" };
+      }
+      const response = await transport.derivedRunObservations(
+        identity.run_id,
         window.start,
         window.end,
       );
       if (!response.data) return { status: "error", reason: "chart_read_failed" };
-      points = response.data.items.map((point) => ({
-        observedAt: point.observed_at,
-        exactValue: point.value,
-        status: point.status,
-      }));
+      if (
+        response.data.run_id !== identity.run_id ||
+        response.data.definition_id !== identity.definition_id ||
+        response.data.definition_version !== identity.definition_version
+      ) {
+        return { status: "error", reason: "chart_identity_mismatch" };
+      }
+      points = normalizeChartPoints(response.data.items);
     } else {
       return { status: "empty", reason: "featured_metric_identity_missing" };
     }
-    return {
-      status: "available",
-      metricKey: metric.metric_key,
-      title: metric.label_fa,
-      sourceLabel: metric.source?.source_name ?? null,
-      start: window.start,
-      end: window.end,
-      points,
-    };
+    return chartFromPoints(metric, window, points);
   } catch {
     return { status: "error", reason: "chart_read_failed" };
   }

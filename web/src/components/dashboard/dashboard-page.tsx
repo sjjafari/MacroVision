@@ -8,11 +8,14 @@ import type {
 } from "@/lib/dashboard/types";
 import { formatUtcTimestamp } from "@/lib/dashboard/format";
 
-function metricMap(data: DashboardPageData): Map<string, DashboardMetricSummary> {
+function metricMap(
+  data: DashboardPageData,
+): Map<string, Map<string, DashboardMetricSummary>> {
   return new Map(
-    data.summary.groups
-      .flatMap((group) => group.metrics)
-      .map((metric) => [metric.metric_key, metric]),
+    data.summary.groups.map((group) => [
+      group.group_code,
+      new Map(group.metrics.map((metric) => [metric.metric_key, metric])),
+    ]),
   );
 }
 
@@ -40,8 +43,9 @@ export function DashboardGroupSection({
   summaries,
 }: {
   group: DashboardDefinition["groups"][number];
-  summaries: Map<string, DashboardMetricSummary>;
+  summaries: Map<string, Map<string, DashboardMetricSummary>>;
 }) {
+  const groupSummaries = summaries.get(group.group_code);
   return (
     <section className="dashboard-group" aria-labelledby={`group-${group.group_code}`}>
       <header>
@@ -50,7 +54,7 @@ export function DashboardGroupSection({
       </header>
       <div className="dashboard-metric-grid">
         {group.metrics.map((definition) => {
-          const metric = summaries.get(definition.metric_key);
+          const metric = groupSummaries?.get(definition.metric_key);
           return metric ? (
             <MetricCard
               key={definition.metric_key}

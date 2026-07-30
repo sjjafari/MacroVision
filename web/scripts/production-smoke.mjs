@@ -23,8 +23,10 @@ function dashboardDefinition(code) {
         metrics: [
           {
             metric_key: `${code}_exact`,
-            kind: "raw",
-            raw_series_code: "FRED.CPIAUCSL",
+            kind: code === "macro" ? "derived" : "raw",
+            raw_series_code: code === "macro" ? null : "FRED.CPIAUCSL",
+            derived_definition_code:
+              code === "macro" ? "ANALYTICS.CPI.YOY" : null,
             label_fa: "مقدار دقیق",
             subtitle_fa: "نمایش بدون گردکردن",
             localized_unit_label: "واحد شاخص",
@@ -159,6 +161,31 @@ function dashboardSummary(code) {
         title_fa: "تورم",
         metrics: [
           metric(code, "exact", {
+            ...(code === "markets"
+              ? {
+                  raw_identity: {
+                    series_id: 12,
+                    series_code: "FRED.MISSING",
+                    observation_id: 22,
+                  },
+                }
+              : {}),
+            ...(code === "macro"
+              ? {
+                  kind: "derived",
+                  source: null,
+                  raw_identity: null,
+                  derived_identity: {
+                    definition_id: 31,
+                    definition_code: "ANALYTICS.CPI.YOY",
+                    definition_version: 2,
+                    run_id: 41,
+                    observation_id: 51,
+                  },
+                  calculation_cutoff: "2026-06-10T01:00:00Z",
+                  analytics_completed_at: "2026-06-10T01:01:00Z",
+                }
+              : {}),
             state: "stale",
             state_reason: "series_stale",
             freshness: {
@@ -269,6 +296,68 @@ const upstream = createServer((request, response) => {
           revision_count: 0,
         },
       ]),
+    );
+    return;
+  }
+  if (request.url?.startsWith("/api/v1/data-series/12/observations?")) {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(
+      JSON.stringify([
+        {
+          id: 22,
+          series_id: 12,
+          observed_at: "2026-06-01T00:00:00Z",
+          publication_timestamp: null,
+          ingestion_timestamp: "2026-06-02T00:00:00Z",
+          provider_vintage_start: null,
+          provider_vintage_end: null,
+          provider_metadata: {},
+          value: decimal,
+          status: "missing",
+          source_reference: null,
+          revision_count: 0,
+        },
+      ]),
+    );
+    return;
+  }
+  if (request.url?.startsWith("/api/v1/data-series/13/observations?")) {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end("[]");
+    return;
+  }
+  if (request.url?.startsWith("/api/v1/analytics-runs/41/observations?")) {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(
+      JSON.stringify({
+        definition_id: 31,
+        definition_version: 2,
+        run_id: 41,
+        limit: 200,
+        offset: 0,
+        items: [
+          {
+            id: 50,
+            run_id: 41,
+            definition_version_id: 61,
+            observed_at: "2026-05-01T00:00:00Z",
+            value: "1234567880.12345678",
+            status: "present",
+            missing_reason: null,
+            created_at: "2026-06-10T01:01:00Z",
+          },
+          {
+            id: 51,
+            run_id: 41,
+            definition_version_id: 61,
+            observed_at: "2026-06-01T00:00:00Z",
+            value: null,
+            status: "missing",
+            missing_reason: "source_missing",
+            created_at: "2026-06-10T01:01:00Z",
+          },
+        ],
+      }),
     );
     return;
   }
@@ -391,10 +480,21 @@ try {
         !html.includes("1234567890.12345678") ||
         !html.includes("دادهٔ مفقود") ||
         !html.includes("دادهٔ قدیمی") ||
-        !html.includes("جدول متنی داده‌های نمودار") ||
         html.includes("داده هنوز بارگذاری نشده است")
       ) {
         throw new Error(`${route} did not render the connected dashboard contract.`);
+      }
+      if (
+        route === "/fa/markets" &&
+        !html.includes("chart_has_no_present_values")
+      ) {
+        throw new Error("Markets did not render the all-missing chart state.");
+      }
+      if (
+        route !== "/fa/markets" &&
+        !html.includes("جدول متنی داده‌های نمودار")
+      ) {
+        throw new Error(`${route} did not render exact chart evidence.`);
       }
       if (html.includes(">0<")) {
         throw new Error(`${route} mapped missing dashboard data to zero.`);
@@ -406,6 +506,15 @@ try {
   const proxyBytes = await proxyResponse.text();
   if (!proxyResponse.ok || !queryObserved || !proxyBytes.includes(`"${decimal}"`)) {
     throw new Error("Proxy did not preserve query or exact Decimal JSON string.");
+  }
+  const emptyObservationResponse = await fetch(
+    `${webBase}/api/v1/data-series/13/observations?limit=200&offset=0`,
+  );
+  if (
+    !emptyObservationResponse.ok ||
+    (await emptyObservationResponse.text()) !== "[]"
+  ) {
+    throw new Error("Fake upstream empty chart observation contract failed.");
   }
 
   const conflict = await fetch(`${webBase}/api/v1/smoke/failure`);

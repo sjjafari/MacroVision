@@ -974,6 +974,7 @@ a {
 }
 
 .chart-range,
+.chart-geometry-note,
 .dashboard-chart header p {
   margin: 0;
   color: var(--text-muted);
@@ -981,13 +982,27 @@ a {
   overflow-wrap: anywhere;
 }
 
-.chart-empty-state {
+.chart-empty-state,
+.chart-error-state {
+  display: grid;
   min-height: 14rem;
   padding: var(--space-5);
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-lg);
   place-content: center;
   text-align: center;
+}
+
+.chart-error-state {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--negative) 45%, var(--border));
+  background: color-mix(in srgb, var(--negative) 7%, var(--surface-elevated));
+}
+
+.chart-empty-state span,
+.chart-error-state span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 .dashboard-updates ol {

@@ -82,11 +82,17 @@ export function MetricComparison({
   comparison: DashboardComparison;
 }) {
   if (comparison.type === "none") return null;
+  const stateLabels = {
+    available: "مقایسه موجود",
+    missing: "دادهٔ مقایسه مفقود",
+    incomparable: "مقایسه‌ناپذیر",
+    frequency_mismatch: "تناوب‌های متفاوت",
+  } as const;
   return (
     <section className="metric-comparison" aria-label="مقایسه">
       <div className="metric-comparison-title">
         <strong>{comparison.basis_label_fa}</strong>
-        <span>{comparison.state}</span>
+        <span>{stateLabels[comparison.state]}</span>
       </div>
       {comparison.state === "available" ? (
         <dl className="inline-facts">
@@ -242,6 +248,41 @@ export function MetricCard({
           {metric.comparison.state_reason && (
             <><dt>کد وضعیت مقایسه</dt><dd className="ltr">{metric.comparison.state_reason}</dd></>
           )}
+          {metric.comparison.derived_identity && (
+            <>
+              <dt>تعریف مقایسه</dt>
+              <dd className="ltr">
+                {metric.comparison.derived_identity.definition_code}
+              </dd>
+              <dt>شناسه/نسخه/اجرا/نقطهٔ مقایسه</dt>
+              <dd className="ltr">
+                {metric.comparison.derived_identity.definition_id ?? "—"} /{" "}
+                {metric.comparison.derived_identity.definition_version ?? "—"} /{" "}
+                {metric.comparison.derived_identity.run_id ?? "—"} /{" "}
+                {metric.comparison.derived_identity.observation_id ?? "—"}
+              </dd>
+            </>
+          )}
+          <TimeFact
+            label="زمان نقطهٔ جاری مقایسه"
+            value={metric.comparison.current_observed_at ?? null}
+          />
+          <TimeFact
+            label="زمان نقطهٔ مرجع مقایسه"
+            value={metric.comparison.reference_observed_at ?? null}
+          />
+          <TimeFact
+            label="زمان نقطهٔ تحلیلی مقایسه"
+            value={metric.comparison.derived_observed_at ?? null}
+          />
+          <TimeFact
+            label="برش محاسبهٔ مقایسه"
+            value={metric.comparison.derived_calculation_cutoff ?? null}
+          />
+          <TimeFact
+            label="پایان اجرای مقایسه"
+            value={metric.comparison.derived_completed_at ?? null}
+          />
         </dl>
       </details>
     </article>

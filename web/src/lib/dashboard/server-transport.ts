@@ -5,7 +5,7 @@ import type {
   DashboardCode,
   DashboardDefinition,
   DashboardSummary,
-  DerivedObservationPage,
+  AnalyticsRunObservationPage,
   ObservationRead,
 } from "@/lib/dashboard/types";
 
@@ -19,11 +19,11 @@ export type DashboardReadTransport = {
     start: string,
     end: string,
   ): Promise<ReadResult<ObservationRead[]>>;
-  derivedObservations(
-    definitionId: number,
+  derivedRunObservations(
+    runId: number,
     start: string,
     end: string,
-  ): Promise<ReadResult<DerivedObservationPage>>;
+  ): Promise<ReadResult<AnalyticsRunObservationPage>>;
 };
 
 export function createDashboardReadTransport(): DashboardReadTransport {
@@ -54,12 +54,12 @@ export function createDashboardReadTransport(): DashboardReadTransport {
       );
       return { data: result.data ?? null, status: result.response.status };
     },
-    async derivedObservations(definitionId, start, end) {
+    async derivedRunObservations(runId, start, end) {
       const result = await client.GET(
-        "/api/v1/derived-series/{definition_id}/observations",
+        "/api/v1/analytics-runs/{run_id}/observations",
         {
           params: {
-            path: { definition_id: definitionId },
+            path: { run_id: runId },
             query: { start, end, limit: 200, offset: 0 },
           },
         },

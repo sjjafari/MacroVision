@@ -13,6 +13,8 @@ export type DerivedObservationRead =
   components["schemas"]["DerivedObservationRead"];
 export type DerivedObservationPage =
   components["schemas"]["DerivedObservationPage"];
+export type AnalyticsRunObservationPage =
+  components["schemas"]["DerivedObservationPage"];
 
 export type ChartPoint = {
   observedAt: string;

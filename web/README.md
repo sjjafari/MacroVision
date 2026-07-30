@@ -31,10 +31,22 @@ failed response.
 
 The featured chart uses the definition's reviewed `featured_chart` flag and one bounded
 raw or derived observation GET (maximum 200 points). Missing observations remain gaps.
-All Decimal values remain strings: the UI groups digits using string operations, uses
-the original exact values in labels, tooltips, and the accessible table, and performs
-no browser financial calculation. ECharts receives the exact strings only as visual
-geometry input.
+Metric keys are unique across the complete dashboard and are resolved through a
+`group_code` plus `metric_key` lookup. Derived charts use
+`GET /api/v1/analytics-runs/{run_id}/observations` and reject any response whose run,
+definition, or version differs from the selected summary identity.
+
+All Decimal values remain strings: the UI groups digits using string operations and
+uses the original exact values in labels, tooltips, comparisons, and the accessible
+table. A chart-only adapter converts usable values to finite numbers solely for
+approximate ECharts geometry; projected coordinates never enter displayed evidence or
+financial calculation. Empty responses, all-missing points, identity mismatches,
+endpoint failures, and chart-runtime failures have separate safe states.
+
+ECharts colors come from the existing CSS design tokens. The chart observes forced
+`data-theme` changes and operating-system color-scheme changes, updates between system
+dark and forced light, and cleans up its resize, mutation, media-query, and runtime
+resources.
 
 Phase 2B adds no migration, provider request, implicit Analytics execution, frontend
 mutation, authentication, or public deployment. Package and OpenAPI versions remain

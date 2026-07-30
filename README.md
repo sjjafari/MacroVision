@@ -34,7 +34,16 @@ Dashboard values and backend-computed comparisons remain exact Decimal strings i
 browser. Missing, stale, incomparable, and frequency-mismatch states are displayed
 explicitly. The featured raw or derived chart reads at most 200 persisted observations,
 preserves gaps, and uses the original exact strings for labels, tooltips, and its
-accessible table; the chart library receives those strings only for visual geometry.
+accessible table. Dashboard metric identities are validated globally and rendered
+through a group/metric composite lookup. Derived charts are pinned to the exact
+persisted Analytics run and definition version named by the summary.
+
+Only an isolated chart adapter converts a usable exact string to a finite JavaScript
+number for approximate canvas geometry. Projected values are never reused for labels,
+tooltips, tables, comparisons, ordering, or financial calculations. Empty data,
+all-missing data, endpoint failures, identity mismatches, and ECharts runtime failures
+remain distinct safe states. ECharts reads the existing CSS design tokens and reacts to
+system-dark and forced-light changes.
 No browser financial calculation, implicit Analytics execution, provider request, or
 frontend mutation is performed.
 
