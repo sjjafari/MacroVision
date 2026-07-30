@@ -1,8 +1,8 @@
 # MacroVision Web
 
 Phase 1 provides the private Persian RTL frontend foundation for MacroVision. Web MVP
-Phase 2A adds private dashboard read contracts to the backend, but the nine route
-shells intentionally remain unwired and make no provider calls.
+Phase 2B connects `/fa`, `/fa/markets`, and `/fa/macro` to the persisted dashboard
+contracts added in Phase 2A. The remaining six Persian routes stay as shells.
 
 The available private backend contracts are:
 
@@ -13,9 +13,11 @@ The available private backend contracts are:
 - bounded current and as-of observation ranges
 
 Dashboard summaries return only persisted state. Comparisons are computed by the
-backend, missing metrics are explicit, and GET requests never execute Analytics. The
-frontend will consume these contracts in a later phase after its server-side data
-access layer is implemented.
+backend, missing metrics are explicit, and GET requests never execute Analytics.
+Next.js Server Components fetch each definition and summary in parallel through a
+server-only client with `cache: "no-store"` and a five-second timeout. Browser API
+traffic remains same-origin under `/api/v1`; the configured FastAPI URL is never sent
+to browser code.
 
 The summary contract keeps point state separate from comparison state. A present point
 remains available or stale even if its comparison is missing, incomparable, or has a
@@ -27,8 +29,17 @@ policy exists. `stale_metric_count` is derived from freshness status, and Decima
 overflow in a comparison is represented as an incomparable comparison rather than a
 failed response.
 
-Phase 2B frontend data wiring remains pending. Phase 2A adds no migration, provider
-request, implicit Analytics execution, authentication, or public deployment.
+The featured chart uses the definition's reviewed `featured_chart` flag and one bounded
+raw or derived observation GET (maximum 200 points). Missing observations remain gaps.
+All Decimal values remain strings: the UI groups digits using string operations, uses
+the original exact values in labels, tooltips, and the accessible table, and performs
+no browser financial calculation. ECharts receives the exact strings only as visual
+geometry input.
+
+Phase 2B adds no migration, provider request, implicit Analytics execution, frontend
+mutation, authentication, or public deployment. Package and OpenAPI versions remain
+`0.7.0`, Alembic head remains `20260726_0009`, and Phase 3 publication work remains
+pending.
 
 ## Prerequisites
 
@@ -53,8 +64,9 @@ prefix. The local example points to `http://127.0.0.1:8000`.
 npm run dev
 ```
 
-Open `http://127.0.0.1:3000/fa`. Static route shells work without a running backend.
-The same-origin `/api/v1/*` proxy requires the configured backend only when called.
+Open `http://127.0.0.1:3000/fa`. The three connected dashboard routes require the
+configured backend. Other static route shells remain available without it. Browser
+requests use the same-origin `/api/v1/*` proxy.
 
 ## API generation
 
@@ -86,9 +98,10 @@ npm run build
 npm run smoke
 ```
 
-`npm run smoke` uses a localhost-only fake upstream. It verifies the production build,
-all nine routes, redirects, transparent error handling, query preservation, and exact
-Decimal strings without contacting FRED or any public provider.
+`npm run smoke` uses a localhost-only fake upstream. It verifies the three connected
+dashboards, all nine routes, bounded chart reads and gaps, redirects, transparent error
+handling, query preservation, exact Decimal strings, and absence of mutation requests
+without contacting FRED or any public provider.
 
 ## Security boundary
 
