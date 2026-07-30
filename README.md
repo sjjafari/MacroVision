@@ -23,6 +23,36 @@ not connect to brokers or execute trades.
 The API makes these principles explicit through required supporting evidence, opposing
 evidence, critic review, invalidation conditions, probability, and confidence fields.
 
+## Private Web MVP v0.8 Phase 2B
+
+The Persian read-only dashboards at `/fa`, `/fa/markets`, and `/fa/macro` now consume
+the persisted dashboard definition and summary APIs. Initial reads run in Next.js
+Server Components through a server-only, bounded, no-cache transport; browser API
+traffic continues to use the same-origin `/api/v1` boundary.
+
+Dashboard values and backend-computed comparisons remain exact Decimal strings in the
+browser. Missing, stale, incomparable, and frequency-mismatch states are displayed
+explicitly. The featured raw or derived chart reads at most 200 persisted observations,
+preserves gaps, and uses the original exact strings for labels, tooltips, and its
+accessible table. Dashboard metric identities are validated globally and rendered
+through a group/metric composite lookup. Derived charts are pinned to the exact
+persisted Analytics run and definition version named by the summary.
+
+Only an isolated chart adapter converts a usable exact string to a finite JavaScript
+number for approximate canvas geometry. Projected values are never reused for labels,
+tooltips, tables, comparisons, ordering, or financial calculations. Empty data,
+all-missing data, endpoint failures, identity mismatches, and ECharts runtime failures
+remain distinct safe states. ECharts reads the existing CSS design tokens and reacts to
+system-dark and forced-light changes.
+No browser financial calculation, implicit Analytics execution, provider request, or
+frontend mutation is performed.
+
+This remains a private trusted-network preview. Authentication and authorization are
+absent, public deployment is prohibited, and the remaining six Persian routes are
+shells for later phases. Phase 3 publication work remains pending. Phase 2B does not
+change package or OpenAPI version `0.7.0`, add a migration, or move Alembic head
+`20260726_0009`.
+
 ## Architecture
 
 ```text

@@ -6,3 +6,11 @@ import { afterEach } from "vitest";
 
 expect.extend(toHaveNoViolations);
 afterEach(cleanup);
+
+class TestResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;

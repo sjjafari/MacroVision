@@ -1,3 +1,5 @@
+import "server-only";
+
 const BACKEND_ENVIRONMENT_VARIABLE = "MACROVISION_BACKEND_URL";
 
 export function getBackendUrl(): URL {
