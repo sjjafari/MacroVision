@@ -17,6 +17,7 @@ from macrovision.errors import (
     provider_error_handler,
     validation_error_handler,
 )
+from macrovision.indicator_api import router as indicator_router
 from macrovision.integrity import IntegrityConflictError
 from macrovision.macro_data_api import router as macro_data_router
 from macrovision.portfolio_api import router as portfolio_router
@@ -58,3 +59,4 @@ app.include_router(provider_router, prefix="/api/v1")
 app.include_router(scheduler_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
+app.include_router(indicator_router, prefix="/api/v1")

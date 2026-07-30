@@ -53,6 +53,43 @@ shells for later phases. Phase 3 publication work remains pending. Phase 2B does
 change package or OpenAPI version `0.7.0`, add a migration, or move Alembic head
 `20260726_0009`.
 
+## Private Web MVP v0.8 Phase 3A
+
+Phase 3A adds backend-only reader contracts for a small, reviewed indicator catalog.
+The catalog is deterministic, code-owned, validated at import, and uses canonical raw
+series and derived-definition codes already reviewed in the dashboard catalog. It
+introduces no database table or migration.
+
+The private endpoints are:
+
+- `GET /api/v1/indicator-catalog`
+- `GET /api/v1/indicator-catalog/{series_id}`
+- `GET /api/v1/indicator-catalog/{series_id}/snapshot`
+- `GET /api/v1/indicator-catalog/{series_id}/related-derived`
+
+`reviewed_private` entries may appear in these trusted-network reader contracts;
+`withheld` entries remain indistinguishable from missing entries. This curation is not
+public eligibility, and `DataSeries.is_active` remains only operational state. An
+inactive reviewed series remains explicit, while an active but unconfigured series is
+never included automatically.
+
+Presentation fields are bounded Persian editorial metadata and cannot override
+canonical code, name, description, category, geography, frequency, unit, currency,
+source identity, or operational state. Current snapshots use the latest effective
+revision. Historical snapshots select only observations and revisions visible at the
+aware UTC `as_of` cutoff. Previous-observation changes reuse the hardened backend
+Decimal comparison path, preserve eight-decimal strings, and return safe incomparable
+states for zero references or non-representable results.
+
+Related-derived reads use only reviewed relationships and the latest completed
+persisted result for the exact latest definition version. They never discover every
+Analytics definition, execute Analytics, create a run, or contact a provider.
+
+Phase 3B frontend wiring remains pending: `/fa/indicators` and
+`/fa/indicators/[seriesId]` are still shells. Authentication is absent and public
+deployment remains prohibited. Phase 3A keeps package/OpenAPI version `0.7.0` and
+Alembic head `20260726_0009`.
+
 ## Architecture
 
 ```text
@@ -73,6 +110,9 @@ Shared contracts     src/macrovision/contracts.py, errors.py
 Macro Data API       src/macrovision/macro_data_api.py
 Macro Data services  src/macrovision/macro_data_services.py
 Macro Data storage   src/macrovision/macro_data_models.py
+Indicator catalog    src/macrovision/indicator_catalog.py
+Indicator API        src/macrovision/indicator_api.py
+Indicator services   src/macrovision/indicator_services.py
 Provider API         src/macrovision/provider_api.py
 Provider contracts   src/macrovision/provider_contracts.py
 Provider sync        src/macrovision/provider_services.py

@@ -88,7 +88,7 @@ jobs:
           /tmp/macrovision-wheel/bin/python scripts/release_smoke.py
           --database-url
           postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
-      - name: PostgreSQL scheduler and analytics constraints
+      - name: PostgreSQL scheduler, analytics, and indicator constraints
         env:
           MACROVISION_DATABASE_URL: postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
           MACROVISION_POSTGRES_TEST_URL: postgresql+psycopg://macrovision:macrovision@localhost:5432/macrovision
@@ -98,7 +98,8 @@ jobs:
           tests/test_analytics_api_postgresql.py
           tests/test_analytics_benchmark.py
           tests/test_analytics_concurrency.py
-          tests/test_dashboard_postgresql.py --no-cov
+          tests/test_dashboard_postgresql.py
+          tests/test_indicator_catalog_postgresql.py --no-cov
 
   frontend:
     runs-on: ubuntu-latest

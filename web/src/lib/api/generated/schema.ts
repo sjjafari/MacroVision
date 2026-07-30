@@ -761,6 +761,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/indicator-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Catalog */
+        get: operations["list_catalog_api_v1_indicator_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/indicator-catalog/{series_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Indicator */
+        get: operations["get_indicator_api_v1_indicator_catalog__series_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/indicator-catalog/{series_id}/related-derived": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Related Derived */
+        get: operations["get_related_derived_api_v1_indicator_catalog__series_id__related_derived_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/indicator-catalog/{series_id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Indicator Snapshot */
+        get: operations["get_indicator_snapshot_api_v1_indicator_catalog__series_id__snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/investors": {
         parameters: {
             query?: never;
@@ -2365,6 +2433,228 @@ export interface components {
          * @enum {string}
          */
         ImportStatus: "processing" | "completed" | "completed_with_errors" | "failed";
+        /**
+         * IndicatorAvailability
+         * @enum {string}
+         */
+        IndicatorAvailability: "available" | "configured_series_missing";
+        /** IndicatorCanonicalRead */
+        IndicatorCanonicalRead: {
+            category: components["schemas"]["SeriesCategory"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string | null;
+            /** Description */
+            description: string;
+            frequency: components["schemas"]["DataFrequency"];
+            /** Geography */
+            geography: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+            /** Series Code */
+            series_code: string;
+            /** Series Id */
+            series_id: number;
+            /** Stale After Days */
+            stale_after_days: number | null;
+            /** Unit */
+            unit: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** IndicatorCatalogItem */
+        IndicatorCatalogItem: {
+            availability: components["schemas"]["IndicatorAvailability"];
+            /** Catalog Order */
+            catalog_order: number;
+            category: components["schemas"]["SeriesCategory"] | null;
+            curation_status: components["schemas"]["IndicatorCurationStatus"];
+            /** Description Fa */
+            description_fa: string;
+            /** Display Name Fa */
+            display_name_fa: string;
+            /**
+             * Editorial Updated At
+             * Format: date-time
+             */
+            editorial_updated_at: string;
+            frequency: components["schemas"]["DataFrequency"] | null;
+            /** Geography */
+            geography: string | null;
+            /** Localized Unit Label */
+            localized_unit_label: string | null;
+            /** Operational Is Active */
+            operational_is_active: boolean | null;
+            /** Original Name */
+            original_name: string | null;
+            seasonal_adjustment_status: components["schemas"]["IndicatorSeasonalAdjustmentStatus"];
+            /** Series Code */
+            series_code: string;
+            /** Series Id */
+            series_id: number | null;
+            source: components["schemas"]["IndicatorSourceSummary"] | null;
+            /** Unit */
+            unit: string | null;
+        };
+        /** IndicatorCatalogPage */
+        IndicatorCatalogPage: {
+            /** Items */
+            items: components["schemas"]["IndicatorCatalogItem"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** IndicatorCurationRead */
+        IndicatorCurationRead: {
+            /** Catalog Order */
+            catalog_order: number;
+            curation_status: components["schemas"]["IndicatorCurationStatus"];
+            /**
+             * Editorial Updated At
+             * Format: date-time
+             */
+            editorial_updated_at: string;
+            /**
+             * Private Preview
+             * @default true
+             */
+            private_preview: boolean;
+            /**
+             * Public Eligibility
+             * @default false
+             */
+            public_eligibility: boolean;
+        };
+        /**
+         * IndicatorCurationStatus
+         * @enum {string}
+         */
+        IndicatorCurationStatus: "reviewed_private" | "withheld";
+        /** IndicatorDetail */
+        IndicatorDetail: {
+            canonical: components["schemas"]["IndicatorCanonicalRead"];
+            curation: components["schemas"]["IndicatorCurationRead"];
+            presentation: components["schemas"]["IndicatorPresentationRead"];
+            source: components["schemas"]["IndicatorSourceRead"];
+        };
+        /**
+         * IndicatorMetricState
+         * @enum {string}
+         */
+        IndicatorMetricState: "available" | "stale" | "missing";
+        /** IndicatorObservationIdentity */
+        IndicatorObservationIdentity: {
+            /** Observation Id */
+            observation_id: number;
+            /** Revision Count */
+            revision_count: number;
+            /** Series Id */
+            series_id: number;
+        };
+        /** IndicatorPresentationRead */
+        IndicatorPresentationRead: {
+            /** Description Fa */
+            description_fa: string;
+            /** Display Name Fa */
+            display_name_fa: string;
+            /** Localized Unit Label */
+            localized_unit_label: string;
+            /** Methodology Summary Fa */
+            methodology_summary_fa: string;
+            /** Original Name */
+            original_name: string;
+            seasonal_adjustment_status: components["schemas"]["IndicatorSeasonalAdjustmentStatus"];
+            /** Source Attribution Fa */
+            source_attribution_fa: string;
+            /** Source Methodology Url */
+            source_methodology_url: string | null;
+        };
+        /**
+         * IndicatorRelationCode
+         * @enum {string}
+         */
+        IndicatorRelationCode: "year_over_year" | "month_over_month" | "change" | "spread";
+        /**
+         * IndicatorSeasonalAdjustmentStatus
+         * @enum {string}
+         */
+        IndicatorSeasonalAdjustmentStatus: "seasonally_adjusted" | "not_seasonally_adjusted" | "not_applicable" | "unknown";
+        /** IndicatorSnapshot */
+        IndicatorSnapshot: {
+            comparison: components["schemas"]["DashboardComparison"];
+            frequency: components["schemas"]["DataFrequency"];
+            freshness: components["schemas"]["DashboardFreshness"];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Geography */
+            geography: string;
+            /** Knowledge Cutoff */
+            knowledge_cutoff: string | null;
+            /** Localized Unit Label */
+            localized_unit_label: string;
+            mode: components["schemas"]["IndicatorSnapshotMode"];
+            observation_identity: components["schemas"]["IndicatorObservationIdentity"] | null;
+            /** Observed At */
+            observed_at: string | null;
+            /** Requested As Of */
+            requested_as_of: string | null;
+            source: components["schemas"]["IndicatorSourceSummary"];
+            /** Source Attribution Fa */
+            source_attribution_fa: string;
+            /** Source Publication Timestamp */
+            source_publication_timestamp: string | null;
+            state: components["schemas"]["IndicatorMetricState"];
+            /** State Reason */
+            state_reason: string | null;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: string | null;
+        };
+        /**
+         * IndicatorSnapshotMode
+         * @enum {string}
+         */
+        IndicatorSnapshotMode: "current" | "historical_as_of";
+        /** IndicatorSourceRead */
+        IndicatorSourceRead: {
+            /** Description */
+            description: string;
+            /** Reference Url */
+            reference_url: string | null;
+            /** Source Code */
+            source_code: string;
+            /** Source Id */
+            source_id: number;
+            /** Source Name */
+            source_name: string;
+        };
+        /** IndicatorSourceSummary */
+        IndicatorSourceSummary: {
+            /** Reference Url */
+            reference_url: string | null;
+            /** Source Code */
+            source_code: string;
+            /** Source Id */
+            source_id: number;
+            /** Source Name */
+            source_name: string;
+        };
         /** InvalidateDecision */
         InvalidateDecision: {
             /** Reason */
@@ -3014,6 +3304,51 @@ export interface components {
              */
             transformation_type: "rebase_index";
         };
+        /** RelatedDerivedItem */
+        RelatedDerivedItem: {
+            /** Calculation Cutoff */
+            calculation_cutoff: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /** Definition Code */
+            definition_code: string;
+            /** Definition Id */
+            definition_id: number | null;
+            /** Definition Version */
+            definition_version: number | null;
+            /** Description Fa */
+            description_fa: string;
+            /** Enabled */
+            enabled: boolean | null;
+            /** Missing Reason */
+            missing_reason: string | null;
+            /** Observation Id */
+            observation_id: number | null;
+            /** Observed At */
+            observed_at: string | null;
+            relation_code: components["schemas"]["IndicatorRelationCode"];
+            /** Relation Label Fa */
+            relation_label_fa: string;
+            /** Run Id */
+            run_id: number | null;
+            state: components["schemas"]["RelatedDerivedState"];
+            /** Value */
+            value: string | null;
+        };
+        /** RelatedDerivedRead */
+        RelatedDerivedRead: {
+            /** Items */
+            items: components["schemas"]["RelatedDerivedItem"][];
+            /** Series Code */
+            series_code: string;
+            /** Series Id */
+            series_id: number;
+        };
+        /**
+         * RelatedDerivedState
+         * @enum {string}
+         */
+        RelatedDerivedState: "available" | "definition_missing" | "persisted_result_missing" | "definition_disabled";
         /** ReviseDecision */
         ReviseDecision: {
             /** Change Summary */
@@ -6007,6 +6342,211 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DerivedSeriesVersionRead"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_catalog_api_v1_indicator_catalog_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                search?: string | null;
+                category?: components["schemas"]["SeriesCategory"] | null;
+                geography?: string | null;
+                frequency?: components["schemas"]["DataFrequency"] | null;
+                source_id?: number | null;
+                operational_is_active?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorCatalogPage"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_indicator_api_v1_indicator_catalog__series_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorDetail"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_related_derived_api_v1_indicator_catalog__series_id__related_derived_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatedDerivedRead"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_indicator_snapshot_api_v1_indicator_catalog__series_id__snapshot_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorSnapshot"];
                 };
             };
             /** @description Resource not found */

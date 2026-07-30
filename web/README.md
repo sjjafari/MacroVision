@@ -2,7 +2,8 @@
 
 Phase 1 provides the private Persian RTL frontend foundation for MacroVision. Web MVP
 Phase 2B connects `/fa`, `/fa/markets`, and `/fa/macro` to the persisted dashboard
-contracts added in Phase 2A. The remaining six Persian routes stay as shells.
+contracts added in Phase 2A. Phase 3A adds the private backend contracts needed by the
+indicator catalog and detail pages, but the remaining six Persian routes stay shells.
 
 The available private backend contracts are:
 
@@ -11,6 +12,10 @@ The available private backend contracts are:
 - `GET /api/v1/dashboards/{dashboard_code}/summary`
 - filtered `GET /api/v1/data-series`
 - bounded current and as-of observation ranges
+- `GET /api/v1/indicator-catalog`
+- `GET /api/v1/indicator-catalog/{series_id}`
+- `GET /api/v1/indicator-catalog/{series_id}/snapshot`
+- `GET /api/v1/indicator-catalog/{series_id}/related-derived`
 
 Dashboard summaries return only persisted state. Comparisons are computed by the
 backend, missing metrics are explicit, and GET requests never execute Analytics.
@@ -48,9 +53,18 @@ ECharts colors come from the existing CSS design tokens. The chart observes forc
 dark and forced light, and cleans up its resize, mutation, media-query, and runtime
 resources.
 
-Phase 2B adds no migration, provider request, implicit Analytics execution, frontend
+Phase 3A uses a validated code-reviewed catalog with `reviewed_private` and `withheld`
+states. These are private curation states, not public publication eligibility.
+`DataSeries.is_active` remains operational and never auto-publishes a series.
+Presentation and methodology metadata cannot override canonical persisted fields.
+Snapshots distinguish current revision semantics from aware-UTC historical `as_of`
+semantics, and backend-computed previous-observation changes remain exact
+eight-decimal strings. Related-derived reads are reviewed and persisted-only; they do
+not automatically discover or execute Analytics.
+
+Phase 2B and 3A add no migration, provider request, implicit Analytics execution, frontend
 mutation, authentication, or public deployment. Package and OpenAPI versions remain
-`0.7.0`, Alembic head remains `20260726_0009`, and Phase 3 publication work remains
+`0.7.0`, Alembic head remains `20260726_0009`, and Phase 3B frontend wiring remains
 pending.
 
 ## Prerequisites

@@ -4081,6 +4081,692 @@
         "title": "ImportStatus",
         "type": "string"
       },
+      "IndicatorAvailability": {
+        "enum": [
+          "available",
+          "configured_series_missing"
+        ],
+        "title": "IndicatorAvailability",
+        "type": "string"
+      },
+      "IndicatorCanonicalRead": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/SeriesCategory"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/DataFrequency"
+          },
+          "geography": {
+            "title": "Geography",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "series_code": {
+            "title": "Series Code",
+            "type": "string"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "integer"
+          },
+          "stale_after_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale After Days"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "series_id",
+          "series_code",
+          "name",
+          "description",
+          "category",
+          "geography",
+          "frequency",
+          "unit",
+          "currency",
+          "is_active",
+          "stale_after_days",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "IndicatorCanonicalRead",
+        "type": "object"
+      },
+      "IndicatorCatalogItem": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/IndicatorAvailability"
+          },
+          "catalog_order": {
+            "title": "Catalog Order",
+            "type": "integer"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeriesCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curation_status": {
+            "$ref": "#/components/schemas/IndicatorCurationStatus"
+          },
+          "description_fa": {
+            "title": "Description Fa",
+            "type": "string"
+          },
+          "display_name_fa": {
+            "title": "Display Name Fa",
+            "type": "string"
+          },
+          "editorial_updated_at": {
+            "format": "date-time",
+            "title": "Editorial Updated At",
+            "type": "string"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataFrequency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geography": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography"
+          },
+          "localized_unit_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Localized Unit Label"
+          },
+          "operational_is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operational Is Active"
+          },
+          "original_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Name"
+          },
+          "seasonal_adjustment_status": {
+            "$ref": "#/components/schemas/IndicatorSeasonalAdjustmentStatus"
+          },
+          "series_code": {
+            "title": "Series Code",
+            "type": "string"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndicatorSourceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "catalog_order",
+          "curation_status",
+          "availability",
+          "series_id",
+          "series_code",
+          "display_name_fa",
+          "original_name",
+          "description_fa",
+          "localized_unit_label",
+          "category",
+          "geography",
+          "frequency",
+          "unit",
+          "seasonal_adjustment_status",
+          "operational_is_active",
+          "source",
+          "editorial_updated_at"
+        ],
+        "title": "IndicatorCatalogItem",
+        "type": "object"
+      },
+      "IndicatorCatalogPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IndicatorCatalogItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "offset",
+          "total",
+          "items"
+        ],
+        "title": "IndicatorCatalogPage",
+        "type": "object"
+      },
+      "IndicatorCurationRead": {
+        "additionalProperties": false,
+        "properties": {
+          "catalog_order": {
+            "title": "Catalog Order",
+            "type": "integer"
+          },
+          "curation_status": {
+            "$ref": "#/components/schemas/IndicatorCurationStatus"
+          },
+          "editorial_updated_at": {
+            "format": "date-time",
+            "title": "Editorial Updated At",
+            "type": "string"
+          },
+          "private_preview": {
+            "default": true,
+            "title": "Private Preview",
+            "type": "boolean"
+          },
+          "public_eligibility": {
+            "default": false,
+            "title": "Public Eligibility",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "curation_status",
+          "catalog_order",
+          "editorial_updated_at"
+        ],
+        "title": "IndicatorCurationRead",
+        "type": "object"
+      },
+      "IndicatorCurationStatus": {
+        "enum": [
+          "reviewed_private",
+          "withheld"
+        ],
+        "title": "IndicatorCurationStatus",
+        "type": "string"
+      },
+      "IndicatorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical": {
+            "$ref": "#/components/schemas/IndicatorCanonicalRead"
+          },
+          "curation": {
+            "$ref": "#/components/schemas/IndicatorCurationRead"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/IndicatorPresentationRead"
+          },
+          "source": {
+            "$ref": "#/components/schemas/IndicatorSourceRead"
+          }
+        },
+        "required": [
+          "curation",
+          "presentation",
+          "canonical",
+          "source"
+        ],
+        "title": "IndicatorDetail",
+        "type": "object"
+      },
+      "IndicatorMetricState": {
+        "enum": [
+          "available",
+          "stale",
+          "missing"
+        ],
+        "title": "IndicatorMetricState",
+        "type": "string"
+      },
+      "IndicatorObservationIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "observation_id": {
+            "title": "Observation Id",
+            "type": "integer"
+          },
+          "revision_count": {
+            "title": "Revision Count",
+            "type": "integer"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "series_id",
+          "observation_id",
+          "revision_count"
+        ],
+        "title": "IndicatorObservationIdentity",
+        "type": "object"
+      },
+      "IndicatorPresentationRead": {
+        "additionalProperties": false,
+        "properties": {
+          "description_fa": {
+            "title": "Description Fa",
+            "type": "string"
+          },
+          "display_name_fa": {
+            "title": "Display Name Fa",
+            "type": "string"
+          },
+          "localized_unit_label": {
+            "title": "Localized Unit Label",
+            "type": "string"
+          },
+          "methodology_summary_fa": {
+            "title": "Methodology Summary Fa",
+            "type": "string"
+          },
+          "original_name": {
+            "title": "Original Name",
+            "type": "string"
+          },
+          "seasonal_adjustment_status": {
+            "$ref": "#/components/schemas/IndicatorSeasonalAdjustmentStatus"
+          },
+          "source_attribution_fa": {
+            "title": "Source Attribution Fa",
+            "type": "string"
+          },
+          "source_methodology_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Methodology Url"
+          }
+        },
+        "required": [
+          "display_name_fa",
+          "original_name",
+          "description_fa",
+          "methodology_summary_fa",
+          "localized_unit_label",
+          "source_attribution_fa",
+          "seasonal_adjustment_status",
+          "source_methodology_url"
+        ],
+        "title": "IndicatorPresentationRead",
+        "type": "object"
+      },
+      "IndicatorRelationCode": {
+        "enum": [
+          "year_over_year",
+          "month_over_month",
+          "change",
+          "spread"
+        ],
+        "title": "IndicatorRelationCode",
+        "type": "string"
+      },
+      "IndicatorSeasonalAdjustmentStatus": {
+        "enum": [
+          "seasonally_adjusted",
+          "not_seasonally_adjusted",
+          "not_applicable",
+          "unknown"
+        ],
+        "title": "IndicatorSeasonalAdjustmentStatus",
+        "type": "string"
+      },
+      "IndicatorSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "$ref": "#/components/schemas/DashboardComparison"
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/DataFrequency"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/DashboardFreshness"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "geography": {
+            "title": "Geography",
+            "type": "string"
+          },
+          "knowledge_cutoff": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Cutoff"
+          },
+          "localized_unit_label": {
+            "title": "Localized Unit Label",
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/IndicatorSnapshotMode"
+          },
+          "observation_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndicatorObservationIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "requested_as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested As Of"
+          },
+          "source": {
+            "$ref": "#/components/schemas/IndicatorSourceSummary"
+          },
+          "source_attribution_fa": {
+            "title": "Source Attribution Fa",
+            "type": "string"
+          },
+          "source_publication_timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Publication Timestamp"
+          },
+          "state": {
+            "$ref": "#/components/schemas/IndicatorMetricState"
+          },
+          "state_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Reason"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "mode",
+          "requested_as_of",
+          "generated_at",
+          "state",
+          "state_reason",
+          "value",
+          "observation_identity",
+          "observed_at",
+          "source_publication_timestamp",
+          "knowledge_cutoff",
+          "unit",
+          "localized_unit_label",
+          "frequency",
+          "geography",
+          "source",
+          "source_attribution_fa",
+          "freshness",
+          "comparison"
+        ],
+        "title": "IndicatorSnapshot",
+        "type": "object"
+      },
+      "IndicatorSnapshotMode": {
+        "enum": [
+          "current",
+          "historical_as_of"
+        ],
+        "title": "IndicatorSnapshotMode",
+        "type": "string"
+      },
+      "IndicatorSourceRead": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "reference_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Url"
+          },
+          "source_code": {
+            "title": "Source Code",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "source_code",
+          "source_name",
+          "reference_url",
+          "description"
+        ],
+        "title": "IndicatorSourceRead",
+        "type": "object"
+      },
+      "IndicatorSourceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "reference_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Url"
+          },
+          "source_code": {
+            "title": "Source Code",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "source_code",
+          "source_name",
+          "reference_url"
+        ],
+        "title": "IndicatorSourceSummary",
+        "type": "object"
+      },
       "InvalidateDecision": {
         "properties": {
           "reason": {
@@ -5918,6 +6604,198 @@
         ],
         "title": "RebaseIndexParameters",
         "type": "object"
+      },
+      "RelatedDerivedItem": {
+        "additionalProperties": false,
+        "properties": {
+          "calculation_cutoff": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Cutoff"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "definition_code": {
+            "title": "Definition Code",
+            "type": "string"
+          },
+          "definition_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Id"
+          },
+          "definition_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Version"
+          },
+          "description_fa": {
+            "title": "Description Fa",
+            "type": "string"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "missing_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Reason"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "relation_code": {
+            "$ref": "#/components/schemas/IndicatorRelationCode"
+          },
+          "relation_label_fa": {
+            "title": "Relation Label Fa",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "state": {
+            "$ref": "#/components/schemas/RelatedDerivedState"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "relation_code",
+          "relation_label_fa",
+          "description_fa",
+          "state",
+          "definition_id",
+          "definition_code",
+          "definition_version",
+          "enabled",
+          "value",
+          "observed_at",
+          "run_id",
+          "observation_id",
+          "calculation_cutoff",
+          "completed_at",
+          "missing_reason"
+        ],
+        "title": "RelatedDerivedItem",
+        "type": "object"
+      },
+      "RelatedDerivedRead": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedDerivedItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "series_code": {
+            "title": "Series Code",
+            "type": "string"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "series_id",
+          "series_code",
+          "items"
+        ],
+        "title": "RelatedDerivedRead",
+        "type": "object"
+      },
+      "RelatedDerivedState": {
+        "enum": [
+          "available",
+          "definition_missing",
+          "persisted_result_missing",
+          "definition_disabled"
+        ],
+        "title": "RelatedDerivedState",
+        "type": "string"
       },
       "ReviseDecision": {
         "properties": {
@@ -11041,6 +11919,386 @@
         "summary": "Get Version",
         "tags": [
           "macro-analytics"
+        ]
+      }
+    },
+    "/api/v1/indicator-catalog": {
+      "get": {
+        "operationId": "list_catalog_api_v1_indicator_catalog_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SeriesCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geography",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geography"
+            }
+          },
+          {
+            "in": "query",
+            "name": "frequency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DataFrequency"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Frequency"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operational_is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Operational Is Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorCatalogPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "List Catalog",
+        "tags": [
+          "private indicator catalog"
+        ]
+      }
+    },
+    "/api/v1/indicator-catalog/{series_id}": {
+      "get": {
+        "operationId": "get_indicator_api_v1_indicator_catalog__series_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Get Indicator",
+        "tags": [
+          "private indicator catalog"
+        ]
+      }
+    },
+    "/api/v1/indicator-catalog/{series_id}/related-derived": {
+      "get": {
+        "operationId": "get_related_derived_api_v1_indicator_catalog__series_id__related_derived_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedDerivedRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Get Related Derived",
+        "tags": [
+          "private indicator catalog"
+        ]
+      }
+    },
+    "/api/v1/indicator-catalog/{series_id}/snapshot": {
+      "get": {
+        "operationId": "get_indicator_snapshot_api_v1_indicator_catalog__series_id__snapshot_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Get Indicator Snapshot",
+        "tags": [
+          "private indicator catalog"
         ]
       }
     },
