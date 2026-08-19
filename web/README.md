@@ -2,8 +2,10 @@
 
 Phase 1 provides the private Persian RTL frontend foundation for MacroVision. Web MVP
 Phase 2B connects `/fa`, `/fa/markets`, and `/fa/macro` to the persisted dashboard
-contracts added in Phase 2A. Phase 3A adds the private backend contracts needed by the
-indicator catalog and detail pages, but the remaining six Persian routes stay shells.
+contracts added in Phase 2A. Phase 3B connects `/fa/indicators` and
+`/fa/indicators/{seriesId}` to the reviewed Phase 3A contracts with URL-backed
+filters, current/as-of snapshots, bounded charts, revision evidence, related
+derived values, and lineage.
 
 The available private backend contracts are:
 
@@ -71,10 +73,32 @@ semantics, and backend-computed previous-observation changes remain exact
 eight-decimal strings. Related-derived reads are reviewed and persisted-only; they do
 not automatically discover or execute Analytics.
 
-Phase 2B and 3A add no migration, provider request, implicit Analytics execution, frontend
-mutation, authentication, or public deployment. Package and OpenAPI versions remain
-`0.7.0`, Alembic head remains `20260726_0009`, and Phase 3B frontend wiring remains
-pending.
+Phase 3B adds no migration, provider request, implicit Analytics execution, frontend
+mutation, authentication, or public deployment. `reviewed_private` is not public
+eligibility. Exact Decimal strings remain server-owned business data; browser Number
+conversion is limited to chart geometry, and current/as-of modes are visibly distinct.
+Package and OpenAPI versions remain `0.7.0`, Alembic head remains `20260726_0009`, and
+Phase 4 comparison remains pending.
+
+Historical mode filters the effective observation's revisions by canonical
+`revision_timestamp <= as_of`, ignoring invalid timestamps and never comparing
+localized display dates. Related-derived and lineage endpoints are current-only;
+historical pages intentionally do not request them and show a Persian limitation
+notice instead. ECharts axis, grid, tooltip, and series colors come from shared CSS
+tokens and update for system or forced-light theme changes after mount. Known
+technical missing reasons are localized, with unknown codes degrading safely.
+
+Deterministic production-style visual preview (PowerShell):
+
+```powershell
+cd D:\Projects\MacroVision\web
+$env:SMOKE_VISUAL_HOLD_MS = "600000"
+npm.cmd run smoke
+```
+
+The smoke command prints its dynamically allocated localhost URL. During the hold,
+browse `/fa`, `/fa/markets`, `/fa/macro`, `/fa/indicators`, and the populated detail
+route printed by the script. Afterwards run `Remove-Item Env:SMOKE_VISUAL_HOLD_MS`.
 
 ## Prerequisites
 

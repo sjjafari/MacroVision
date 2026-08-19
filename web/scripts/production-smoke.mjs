@@ -10,6 +10,13 @@ const decimal = "1234567890.12345678";
 const webBase = `http://${host}:${webPort}`;
 let queryObserved = false;
 const upstreamMethods = [];
+let relatedRequests = 0;
+let lineageRequests = 0;
+
+const indicatorSource = { source_id: 7, source_code: "FRED", source_name: "Federal Reserve Economic Data", reference_url: "https://fred.stlouisfed.org/series/CPIAUCSL" };
+const catalogItem = { catalog_order: 1, curation_status: "reviewed_private", availability: "available", series_id: 11, series_code: "FRED.CPIAUCSL", display_name_fa: "شاخص قیمت مصرف‌کننده آمریکا", original_name: "Consumer Price Index for All Urban Consumers", description_fa: "معیار منتخب برای بررسی روند سطح قیمت‌ها", localized_unit_label: "واحد شاخص", category: "inflation", geography: "US", frequency: "monthly", unit: "index", seasonal_adjustment_status: "seasonally_adjusted", operational_is_active: true, source: indicatorSource, editorial_updated_at: "2026-08-01T00:00:00Z" };
+const missingCatalogItem = { ...catalogItem, catalog_order: 2, availability: "configured_series_missing", series_id: null, series_code: "FRED.MISSING", display_name_fa: "شاخص در انتظار اتصال", original_name: null, source: null, operational_is_active: null };
+function indicatorSnapshot(asOf = null) { return { mode: asOf ? "historical_as_of" : "current", requested_as_of: asOf, generated_at: "2026-08-01T12:00:00Z", state: asOf ? "available" : "stale", state_reason: asOf ? null : "stale_after_days_exceeded", value: "321.40000000", observation_identity: { series_id: 11, observation_id: 21, revision_count: 1 }, observed_at: "2026-06-01T00:00:00Z", source_publication_timestamp: null, knowledge_cutoff: asOf ?? "2026-06-02T00:00:00Z", unit: "index", localized_unit_label: "واحد شاخص", frequency: "monthly", geography: "US", source: indicatorSource, source_attribution_fa: "FRED", freshness: { evaluated_at: "2026-08-01T00:00:00Z", policy: "raw_series_stale_after_days", stale_after_days: 30, age_basis: "observed_at", status: asOf ? "current" : "stale" }, comparison: { type: "previous_observation", basis_code: "previous_observation", basis_label_fa: "مشاهدهٔ قبلی", anchor_policy: "previous_observation", state: "available", state_reason: null, current_observed_at: "2026-06-01T00:00:00Z", reference_observation_id: 20, reference_observed_at: "2026-05-01T00:00:00Z", reference_value: "320.10000000", absolute_change: "1.30000000", percentage_change: "0.40612309", derived_identity: null, derived_value: null, derived_observed_at: null, derived_calculation_cutoff: null, derived_completed_at: null } }; }
 
 function dashboardDefinition(code) {
   return {
@@ -249,6 +256,20 @@ const upstream = createServer((request, response) => {
     response.end(JSON.stringify({ error: { code: "read_only" } }));
     return;
   }
+  const url = new URL(request.url ?? "/", `http://${host}`);
+  if (url.pathname === "/api/v1/indicator-catalog") {
+    const searched = url.searchParams.get("search");
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ limit: 12, offset: Number(url.searchParams.get("offset") ?? 0), total: searched === "none" ? 0 : 2, items: searched === "none" ? [] : [catalogItem, missingCatalogItem] })); return;
+  }
+  if (url.pathname === "/api/v1/indicator-catalog/11") {
+    response.writeHead(200, { "content-type": "application/json" }); response.end(JSON.stringify({ curation: { curation_status: "reviewed_private", catalog_order: 1, editorial_updated_at: "2026-08-01T00:00:00Z", private_preview: true, public_eligibility: false }, presentation: { display_name_fa: catalogItem.display_name_fa, original_name: catalogItem.original_name, description_fa: catalogItem.description_fa, methodology_summary_fa: "تغییر سطح قیمت مصرف‌کننده با روش منبع رسمی", localized_unit_label: "واحد شاخص", source_attribution_fa: "FRED", seasonal_adjustment_status: "seasonally_adjusted", source_methodology_url: "https://fred.stlouisfed.org/series/CPIAUCSL" }, canonical: { series_id: 11, series_code: catalogItem.series_code, name: catalogItem.original_name, description: "Consumer price index", category: "inflation", geography: "US", frequency: "monthly", unit: "index", currency: null, is_active: true, stale_after_days: 30, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z" }, source: { ...indicatorSource, description: "Official FRED source" } })); return;
+  }
+  if (url.pathname === "/api/v1/indicator-catalog/11/snapshot") { response.writeHead(200,{"content-type":"application/json"}); response.end(JSON.stringify(indicatorSnapshot(url.searchParams.get("as_of")))); return; }
+  if (url.pathname === "/api/v1/indicator-catalog/11/related-derived") { relatedRequests += 1; response.writeHead(200,{"content-type":"application/json"}); response.end(JSON.stringify({series_id:11,series_code:catalogItem.series_code,items:[{relation_code:"year_over_year",relation_label_fa:"تورم سالانه",description_fa:"تغییر نسبت به سال قبل",state:"available",definition_id:31,definition_code:"ANALYTICS.CPI.YOY",definition_version:2,enabled:true,value:"3.25000000",observed_at:"2026-07-01T00:00:00Z",run_id:41,observation_id:50,calculation_cutoff:"2026-07-01T00:00:00Z",completed_at:"2026-07-01T01:00:00Z",missing_reason:null},{relation_code:"month_over_month",relation_label_fa:"تورم ماهانه",description_fa:"تغییر ماهانه",state:"persisted_result_missing",definition_id:32,definition_code:"ANALYTICS.CPI.MOM",definition_version:1,enabled:true,value:null,observed_at:null,run_id:null,observation_id:null,calculation_cutoff:null,completed_at:null,missing_reason:"definition_source_mismatch"}]})); return; }
+  if (url.pathname === "/api/v1/data-series/11/observations/21/revisions") { response.writeHead(200,{"content-type":"application/json"}); response.end(JSON.stringify([{id:1,observation_id:21,sequence:1,previous_value:"321.30000000",revised_value:"321.35000000",previous_status:"present",revised_status:"present",revision_timestamp:"2026-06-03T00:00:00Z",reason:"source_revision",source_reference:"FRED",import_batch_id:1,publication_timestamp:null,provider_vintage_start:"2026-06-02",provider_vintage_end:"2026-06-02",provider_metadata:{}},{id:2,observation_id:21,sequence:2,previous_value:"321.35000000",revised_value:"999.99000000",previous_status:"present",revised_status:"present",revision_timestamp:"2026-07-01T00:00:00Z",reason:"future_revision",source_reference:"FRED",import_batch_id:2,publication_timestamp:null,provider_vintage_start:"2026-07-01",provider_vintage_end:"2026-07-01",provider_metadata:{}}])); return; }
+  if (url.pathname === "/api/v1/analytics-runs/41/observations/50/lineage") { lineageRequests += 1; response.writeHead(200,{"content-type":"application/json"}); response.end(JSON.stringify({run_id:41,observation_id:50,limit:100,offset:0,items:[{id:1,input_alias:"cpi",input_position:0,lineage_position:0,source_knowledge_timestamp:"2026-07-01T00:00:00Z",source_observation_id:21,source_revision_id:1,source_version_id:1,source_version_kind:"raw_observation"}]})); return; }
+  if (url.pathname === "/api/v1/data-series/11/observations/as-of") { request.url = `/api/v1/data-series/11/observations?${url.searchParams}`; }
   const dashboardMatch = request.url?.match(
     /^\/api\/v1\/dashboards\/(home|markets|macro)(\/summary)?$/,
   );
@@ -459,7 +480,7 @@ try {
     "/fa/markets",
     "/fa/macro",
     "/fa/indicators",
-    "/fa/indicators/DEMO.SERIES",
+    "/fa/indicators/11",
     "/fa/compare",
     "/fa/research",
     "/fa/methodology",
@@ -501,6 +522,12 @@ try {
       }
     }
   }
+  if (relatedRequests < 1 || lineageRequests < 1) throw new Error("Current indicator did not exercise related-derived and lineage reads.");
+  const currentRelatedRequests = relatedRequests;
+  const currentLineageRequests = lineageRequests;
+  const historicalIndicator = await fetch(`${webBase}/fa/indicators/11?date=2026-06-30`);
+  const historicalHtml = await historicalIndicator.text();
+  if (!historicalIndicator.ok || !historicalHtml.includes("321.40000000") || !historicalHtml.includes("2026-06-30T23:59:59.999Z") || !historicalHtml.includes("321.35000000") || historicalHtml.includes("999.99000000") || historicalHtml.includes("3.25000000") || !historicalHtml.includes("Lineage") || relatedRequests !== currentRelatedRequests || lineageRequests !== currentLineageRequests) throw new Error("Historical indicator cutoff or current-derived isolation contract failed.");
 
   const proxyResponse = await fetch(`${webBase}/api/v1/smoke?probe=preserved`);
   const proxyBytes = await proxyResponse.text();
@@ -585,7 +612,7 @@ try {
 
   const visualHoldMs = Number(process.env.SMOKE_VISUAL_HOLD_MS ?? "0");
   if (visualHoldMs > 0) {
-    console.log(`Visual smoke server ready at ${webBase}.`);
+    console.log(`Visual smoke server ready at ${webBase}; indicator detail: ${webBase}/fa/indicators/11.`);
     await new Promise((resolvePromise) => setTimeout(resolvePromise, visualHoldMs));
   }
 
