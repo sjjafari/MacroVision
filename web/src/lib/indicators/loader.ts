@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createIndicatorTransport, type IndicatorTransport } from "@/lib/indicators/server-transport";
-import type { IndicatorDetailResult, IndicatorQuery } from "@/lib/indicators/types";
+import type { DataRevisionRead, IndicatorDetailResult, IndicatorQuery, RelatedSection } from "@/lib/indicators/types";
 
 const allowedCategories = new Set(["inflation", "employment", "growth", "interest_rate", "currency", "commodity", "equity_index", "volatility", "liquidity", "custom"]);
 const allowedFrequencies = new Set(["daily", "weekly", "monthly", "quarterly", "annual", "irregular"]);
@@ -27,6 +27,16 @@ export function historicalCutoff(date: string | undefined): string | null {
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const cutoff = new Date(`${date}T23:59:59.999Z`);
   return Number.isFinite(cutoff.getTime()) && cutoff.toISOString().startsWith(date) ? cutoff.toISOString() : null;
+}
+
+export function visibleRevisionsAtCutoff(revisions: DataRevisionRead[], asOf: string | null): DataRevisionRead[] {
+  if (asOf === null) return revisions;
+  const cutoff = Date.parse(asOf);
+  if (!Number.isFinite(cutoff)) return [];
+  return revisions.filter((revision) => {
+    const timestamp = Date.parse(revision.revision_timestamp);
+    return Number.isFinite(timestamp) && timestamp <= cutoff;
+  });
 }
 
 export function chartWindow(frequency: string, observedAt: string) {
@@ -55,17 +65,24 @@ export async function loadIndicatorDetail(seriesId: string, date: string | undef
     if (!detailResult.data || detailResult.data.curation.curation_status !== "reviewed_private") return { status: "unavailable" };
     const asOf = date ? historicalCutoff(date) : null;
     if (date && !asOf) return { status: "invalid" };
-    const [snapshotResult, relatedResult] = await Promise.all([transport.snapshot(id, asOf ?? undefined), transport.related(id)]);
-    if (!snapshotResult.data || !relatedResult.data) return { status: "unavailable" };
+    const snapshotResult = await transport.snapshot(id, asOf ?? undefined);
+    if (!snapshotResult.data) return { status: "unavailable" };
     const snapshot = snapshotResult.data;
     const window = snapshot.observed_at ? chartWindow(snapshot.frequency, snapshot.observed_at) : null;
     const [observationsResult, revisionsResult] = await Promise.all([
       window ? transport.observations(id, window.start, window.end, asOf ?? undefined) : Promise.resolve({ data: [], status: 200 }),
       snapshot.observation_identity?.revision_count ? transport.revisions(id, snapshot.observation_identity.observation_id) : Promise.resolve({ data: [], status: 200 }),
     ]);
-    const lineagePairs = relatedResult.data.items.filter((item) => item.run_id && item.observation_id);
-    const lineageResults = await Promise.all(lineagePairs.map(async (item) => [`${item.run_id}:${item.observation_id}`, await transport.lineage(item.run_id!, item.observation_id!)] as const));
-    const lineages = Object.fromEntries(lineageResults.filter(([, result]) => result.data).map(([key, result]) => [key, result.data!]));
-    return { status: "ready", data: { detail: detailResult.data, snapshot, chart: observationsResult.data?.length ? { status: "ready", points: observationsResult.data } : { status: observationsResult.status === 200 ? "empty" : "error", points: [] }, revisions: revisionsResult.data ?? [], related: relatedResult.data, lineages, asOf } };
+    let relatedSection: RelatedSection = { status: "historical_not_supported" };
+    if (asOf === null) {
+      const relatedResult = await transport.related(id);
+      if (relatedResult.data) {
+        const lineagePairs = relatedResult.data.items.filter((item) => item.run_id && item.observation_id);
+        const lineageResults = await Promise.all(lineagePairs.map(async (item) => [`${item.run_id}:${item.observation_id}`, await transport.lineage(item.run_id!, item.observation_id!)] as const));
+        const lineages = Object.fromEntries(lineageResults.filter(([, result]) => result.data).map(([key, result]) => [key, result.data!]));
+        relatedSection = { status: "current_available", related: relatedResult.data, lineages };
+      } else relatedSection = { status: "unavailable" };
+    }
+    return { status: "ready", data: { detail: detailResult.data, snapshot, chart: observationsResult.data?.length ? { status: "ready", points: observationsResult.data } : { status: observationsResult.status === 200 ? "empty" : "error", points: [] }, revisions: visibleRevisionsAtCutoff(revisionsResult.data ?? [], asOf), relatedSection, asOf } };
   } catch { return { status: "unavailable" }; }
 }

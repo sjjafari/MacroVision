@@ -22,13 +22,17 @@ export type IndicatorQuery = {
 
 export type IndicatorChart = { status: "ready"; points: ObservationRead[] } | { status: "empty" | "error"; points: [] };
 
+export type RelatedSection =
+  | { status: "current_available"; related: RelatedDerivedRead; lineages: Record<string, LineagePage> }
+  | { status: "historical_not_supported" }
+  | { status: "unavailable" };
+
 export type IndicatorDetailData = {
   detail: IndicatorDetail;
   snapshot: IndicatorSnapshot;
   chart: IndicatorChart;
   revisions: DataRevisionRead[];
-  related: RelatedDerivedRead;
-  lineages: Record<string, LineagePage>;
+  relatedSection: RelatedSection;
   asOf: string | null;
 };
 

@@ -80,6 +80,14 @@ conversion is limited to chart geometry, and current/as-of modes are visibly dis
 Package and OpenAPI versions remain `0.7.0`, Alembic head remains `20260726_0009`, and
 Phase 4 comparison remains pending.
 
+Historical mode filters the effective observation's revisions by canonical
+`revision_timestamp <= as_of`, ignoring invalid timestamps and never comparing
+localized display dates. Related-derived and lineage endpoints are current-only;
+historical pages intentionally do not request them and show a Persian limitation
+notice instead. ECharts axis, grid, tooltip, and series colors come from shared CSS
+tokens and update for system or forced-light theme changes after mount. Known
+technical missing reasons are localized, with unknown codes degrading safely.
+
 Deterministic production-style visual preview (PowerShell):
 
 ```powershell

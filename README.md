@@ -9,6 +9,13 @@ are visibly distinct and exact Decimal strings remain server-owned business
 data. This trusted-network preview has no authentication, public deployment,
 implicit Analytics execution, or public-eligibility claim.
 
+Historical indicator pages bound snapshots, raw charts, and visible revisions to
+the selected UTC knowledge cutoff; future revisions are suppressed. Related-derived
+results and lineage remain intentionally current-only in Phase 3B, so historical
+pages display an explicit unsupported state instead of falling back to current
+Analytics. Indicator charts react to system/forced-light theme changes using the
+shared design tokens, and technical missing reasons receive bounded Persian labels.
+
 MacroVision is an Investment Decision Intelligence Platform. Version 0.7.0 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
