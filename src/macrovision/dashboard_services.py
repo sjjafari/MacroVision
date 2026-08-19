@@ -21,6 +21,7 @@ from macrovision.dashboard_catalog import (
 from macrovision.dashboard_schemas import (
     DashboardCode,
     DashboardComparison,
+    DashboardComparisonAnchorPolicy,
     DashboardComparisonState,
     DashboardComparisonType,
     DashboardDefinition,
@@ -45,7 +46,11 @@ from macrovision.macro_data_models import (
     DataSeries,
     ObservationStatus,
 )
-from macrovision.macro_data_schemas import MAX_DATA_VALUE, MIN_DATA_VALUE
+from macrovision.macro_data_schemas import (
+    MAX_DATA_VALUE,
+    MIN_DATA_VALUE,
+    ObservationRead,
+)
 
 _QUANTUM = Decimal("0.00000001")
 
@@ -55,7 +60,7 @@ class DashboardNotFoundError(Exception):
 
 
 @dataclass(frozen=True)
-class _DerivedResult:
+class PersistedDerivedResult:
     definition: DerivedSeriesDefinition
     version: DerivedSeriesDefinitionVersion
     run: AnalyticsRun | None
@@ -154,7 +159,9 @@ def _load_raw(
     return by_code, by_series
 
 
-def _load_derived(session: Session, codes: set[str]) -> dict[str, _DerivedResult]:
+def load_latest_persisted_derived_results(
+    session: Session, codes: set[str]
+) -> dict[str, PersistedDerivedResult]:
     if not codes:
         return {}
     definitions = list(
@@ -251,13 +258,13 @@ def _load_derived(session: Session, codes: set[str]) -> dict[str, _DerivedResult
             )
         )
     observations_by_run = {item.run_id: item for item in observations}
-    resolved: dict[str, _DerivedResult] = {}
+    resolved: dict[str, PersistedDerivedResult] = {}
     for definition in definitions:
         version = versions_by_definition.get(definition.id)
         if version is None:
             continue
         run = runs_by_version.get(version.id)
-        resolved[definition.code] = _DerivedResult(
+        resolved[definition.code] = PersistedDerivedResult(
             definition=definition,
             version=version,
             run=run,
@@ -317,6 +324,24 @@ def _freshness(
     )
 
 
+def raw_series_freshness(
+    series: DataSeries,
+    observed_at: datetime | None,
+    *,
+    evaluated_at: datetime,
+) -> DashboardFreshness:
+    return _freshness(
+        DashboardFreshnessPolicy(
+            type=DashboardFreshnessPolicyType.raw_series_stale_after_days,
+            age_basis=DashboardFreshnessAgeBasis.observed_at,
+        ),
+        series,
+        observed_at,
+        None,
+        evaluated_at,
+    )
+
+
 def _empty_comparison(metric: DashboardMetricDefinition) -> DashboardComparison:
     return DashboardComparison(
         type=metric.comparison.type,
@@ -335,17 +360,18 @@ def _quantized(value: Decimal) -> Decimal:
     return rounded
 
 
-def _previous_comparison(
-    metric: DashboardMetricDefinition,
+def previous_observation_comparison(
     current_value: Decimal,
     current_observed_at: datetime,
-    previous: DataObservation | None,
+    previous: ObservationRead | None,
+    *,
+    basis_label_fa: str,
 ) -> DashboardComparison:
     base = {
-        "type": metric.comparison.type,
-        "basis_code": metric.comparison.basis_code,
-        "basis_label_fa": metric.comparison.basis_label_fa,
-        "anchor_policy": metric.comparison.anchor_policy,
+        "type": DashboardComparisonType.previous_observation,
+        "basis_code": "previous_observation",
+        "basis_label_fa": basis_label_fa,
+        "anchor_policy": DashboardComparisonAnchorPolicy.previous_observation,
         "current_observed_at": current_observed_at,
     }
     if previous is None:
@@ -354,8 +380,7 @@ def _previous_comparison(
             state=DashboardComparisonState.incomparable,
             state_reason="previous_observation_missing",
         )
-    previous_read = macro_data_services.observation_to_read(previous)
-    if previous_read.status != ObservationStatus.present or previous_read.value is None:
+    if previous.status != ObservationStatus.present or previous.value is None:
         return DashboardComparison(
             **base,
             state=DashboardComparisonState.incomparable,
@@ -363,25 +388,25 @@ def _previous_comparison(
             reference_observation_id=previous.id,
         )
     try:
-        absolute = _quantized(current_value - previous_read.value)
+        absolute = _quantized(current_value - previous.value)
     except (InvalidOperation, OverflowError):
         return DashboardComparison(
             **base,
             state=DashboardComparisonState.incomparable,
             state_reason="absolute_change_not_representable",
             reference_observation_id=previous.id,
-            reference_observed_at=previous_read.observed_at,
-            reference_value=previous_read.value,
+            reference_observed_at=previous.observed_at,
+            reference_value=previous.value,
         )
     percentage: Decimal | None = None
     state = DashboardComparisonState.available
     reason = None
-    if previous_read.value == 0:
+    if previous.value == 0:
         state = DashboardComparisonState.incomparable
         reason = "percentage_reference_is_zero"
     else:
         try:
-            percentage = _quantized((absolute / previous_read.value) * Decimal(100))
+            percentage = _quantized((absolute / previous.value) * Decimal(100))
         except (InvalidOperation, OverflowError):
             state = DashboardComparisonState.incomparable
             reason = "percentage_change_not_representable"
@@ -390,14 +415,14 @@ def _previous_comparison(
         state=state,
         state_reason=reason,
         reference_observation_id=previous.id,
-        reference_observed_at=previous_read.observed_at,
-        reference_value=previous_read.value,
+        reference_observed_at=previous.observed_at,
+        reference_value=previous.value,
         absolute_change=absolute,
         percentage_change=percentage,
     )
 
 
-def _derived_identity(code: str, result: _DerivedResult | None) -> DerivedDashboardIdentity:
+def _derived_identity(code: str, result: PersistedDerivedResult | None) -> DerivedDashboardIdentity:
     if result is None:
         return DerivedDashboardIdentity(
             definition_id=None,
@@ -419,7 +444,7 @@ def _existing_derived_comparison(
     metric: DashboardMetricDefinition,
     raw_frequency: DataFrequency,
     current_observed_at: datetime,
-    derived: dict[str, _DerivedResult],
+    derived: dict[str, PersistedDerivedResult],
 ) -> DashboardComparison:
     code = metric.comparison.derived_definition_code
     assert code is not None
@@ -474,7 +499,7 @@ def _raw_summary(
     metric: DashboardMetricDefinition,
     series_by_code: dict[str, DataSeries],
     observations_by_series: dict[int, list[DataObservation]],
-    derived: dict[str, _DerivedResult],
+    derived: dict[str, PersistedDerivedResult],
     generated_at: datetime,
 ) -> DashboardMetricSummary:
     code = metric.raw_series_code
@@ -533,11 +558,15 @@ def _raw_summary(
         comparison = _empty_comparison(metric)
     elif metric.comparison.type == DashboardComparisonType.previous_observation:
         assert current_read.value is not None
-        comparison = _previous_comparison(
-            metric,
+        comparison = previous_observation_comparison(
             current_read.value,
             current_read.observed_at,
-            observations[1] if len(observations) > 1 else None,
+            (
+                macro_data_services.observation_to_read(observations[1])
+                if len(observations) > 1
+                else None
+            ),
+            basis_label_fa=metric.comparison.basis_label_fa,
         )
     elif metric.comparison.type == DashboardComparisonType.existing_derived_metric:
         comparison = _existing_derived_comparison(
@@ -600,7 +629,7 @@ def _raw_summary(
 
 def _derived_summary(
     metric: DashboardMetricDefinition,
-    derived: dict[str, _DerivedResult],
+    derived: dict[str, PersistedDerivedResult],
     generated_at: datetime,
 ) -> DashboardMetricSummary:
     code = metric.derived_definition_code
@@ -680,7 +709,7 @@ def dashboard_summary(
     dashboard = get_dashboard(dashboard_code)
     generated_at = now or datetime.now(UTC)
     series_by_code, observations_by_series = _load_raw(session, _raw_codes(dashboard))
-    derived = _load_derived(session, _derived_codes(dashboard))
+    derived = load_latest_persisted_derived_results(session, _derived_codes(dashboard))
     groups: list[DashboardGroupSummary] = []
     for group in dashboard.groups:
         metrics = [
