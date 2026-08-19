@@ -3,6 +3,12 @@
 > MacroVision v0.7.0 provides the public, vintage-aware Macro Analytics API. Release
 > artifacts are produced only from reviewed commits merged into `main`.
 
+Web MVP Phase 3B connects the private Persian indicator catalog and indicator
+research routes to reviewed read contracts. Current and historical-as-of modes
+are visibly distinct and exact Decimal strings remain server-owned business
+data. This trusted-network preview has no authentication, public deployment,
+implicit Analytics execution, or public-eligibility claim.
+
 MacroVision is an Investment Decision Intelligence Platform. Version 0.7.0 provides a
 local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
 research journals, transaction-driven portfolio accounting, and versioned investment
