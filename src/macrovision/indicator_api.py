@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from macrovision.contracts import PageLimit, PageOffset
@@ -9,6 +9,7 @@ from macrovision.database import get_db
 from macrovision.indicator_schemas import (
     IndicatorCatalogPage,
     IndicatorDetail,
+    IndicatorReaderFilter,
     IndicatorSearch,
     IndicatorSnapshot,
     PositiveSourceId,
@@ -38,7 +39,7 @@ def list_catalog(
     offset: PageOffset = 0,
     search: IndicatorSearch | None = None,
     category: SeriesCategory | None = None,
-    geography: Annotated[str | None, Query(min_length=1, max_length=120)] = None,
+    geography: IndicatorReaderFilter | None = None,
     frequency: DataFrequency | None = None,
     source_id: PositiveSourceId | None = None,
     operational_is_active: bool | None = None,

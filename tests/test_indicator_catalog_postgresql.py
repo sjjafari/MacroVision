@@ -61,3 +61,28 @@ def test_postgresql_catalog_snapshot_revision_and_related_derived_match_sqlite()
         transaction.rollback()
         connection.close()
         engine.dispose()
+
+
+def test_postgresql_empty_related_inputs_are_rejected_like_sqlite() -> None:
+    assert POSTGRES_TEST_URL is not None
+    engine = create_database_engine(POSTGRES_TEST_URL)
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection, autoflush=False, expire_on_commit=False)
+    try:
+        series = _seed_series(session)
+        _seed_derived(session, series, input_series=())
+        item = related_derived(session, series.id).items[0]
+        assert item.state == "persisted_result_missing"
+        assert item.missing_reason == "definition_source_mismatch"
+        assert item.value is None
+        assert item.observed_at is None
+        assert item.run_id is None
+        assert item.observation_id is None
+        assert item.calculation_cutoff is None
+        assert item.completed_at is None
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
+        engine.dispose()

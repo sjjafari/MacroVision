@@ -124,7 +124,8 @@ def list_indicator_catalog(
     operational_is_active: bool | None = None,
 ) -> IndicatorCatalogPage:
     series_by_code = _load_reviewed_series(session)
-    normalized_search = search.casefold() if search is not None else None
+    normalized_search = search.strip().casefold() if search is not None else None
+    normalized_geography = geography.strip().casefold() if geography is not None else None
     filtered: list[IndicatorCatalogItem] = []
     for entry in REVIEWED_INDICATOR_CATALOG:
         series = series_by_code.get(entry.series_code)
@@ -139,8 +140,8 @@ def list_indicator_catalog(
                 continue
         if category is not None and (series is None or series.category != category):
             continue
-        if geography is not None and (
-            series is None or series.geography.casefold() != geography.casefold()
+        if normalized_geography is not None and (
+            series is None or series.geography.casefold() != normalized_geography
         ):
             continue
         if frequency is not None and (series is None or series.frequency != frequency):
@@ -332,6 +333,11 @@ def related_derived(session: Session, series_id: int) -> RelatedDerivedRead:
     for specification in specifications:
         definition = definitions_by_code.get(specification.definition_code)
         result = persisted.get(specification.definition_code)
+        relationship_eligible = bool(
+            result is not None
+            and result.version.inputs
+            and any(item.source_code_snapshot == series.code for item in result.version.inputs)
+        )
         if definition is None:
             state = RelatedDerivedState.definition_missing
             reason = "definition_missing"
@@ -341,9 +347,7 @@ def related_derived(session: Session, series_id: int) -> RelatedDerivedRead:
         elif result is None or result.run is None or result.observation is None:
             state = RelatedDerivedState.persisted_result_missing
             reason = "persisted_result_missing"
-        elif result.version.inputs and not any(
-            item.source_code_snapshot == series.code for item in result.version.inputs
-        ):
+        elif not relationship_eligible:
             state = RelatedDerivedState.persisted_result_missing
             reason = "definition_source_mismatch"
         elif result.observation.status != "present" or result.observation.value is None:
@@ -352,6 +356,7 @@ def related_derived(session: Session, series_id: int) -> RelatedDerivedRead:
         else:
             state = RelatedDerivedState.available
             reason = None
+        evidence_result = result if relationship_eligible else None
         items.append(
             RelatedDerivedItem(
                 relation_code=specification.relation_code,
@@ -370,24 +375,28 @@ def related_derived(session: Session, series_id: int) -> RelatedDerivedRead:
                     else None
                 ),
                 observed_at=(
-                    result.observation.observed_at
-                    if result is not None and result.observation is not None
+                    evidence_result.observation.observed_at
+                    if evidence_result is not None and evidence_result.observation is not None
                     else None
                 ),
-                run_id=result.run.id if result is not None and result.run is not None else None,
+                run_id=(
+                    evidence_result.run.id
+                    if evidence_result is not None and evidence_result.run is not None
+                    else None
+                ),
                 observation_id=(
-                    result.observation.id
-                    if result is not None and result.observation is not None
+                    evidence_result.observation.id
+                    if evidence_result is not None and evidence_result.observation is not None
                     else None
                 ),
                 calculation_cutoff=(
-                    result.run.calculation_cutoff
-                    if result is not None and result.run is not None
+                    evidence_result.run.calculation_cutoff
+                    if evidence_result is not None and evidence_result.run is not None
                     else None
                 ),
                 completed_at=(
-                    result.run.completed_at
-                    if result is not None and result.run is not None
+                    evidence_result.run.completed_at
+                    if evidence_result is not None and evidence_result.run is not None
                     else None
                 ),
                 missing_reason=reason,

@@ -17,6 +17,15 @@ The available private backend contracts are:
 - `GET /api/v1/indicator-catalog/{series_id}/snapshot`
 - `GET /api/v1/indicator-catalog/{series_id}/related-derived`
 
+Indicator catalog `search` and `geography` filters are trimmed, matched
+case-insensitively, and reject whitespace-only values. Detail curation always reports
+the fixed descriptive constants `private_preview=true` and
+`public_eligibility=false`; these are not access control. Related-derived evidence is
+returned only when the selected exact definition version has a persisted input whose
+source-code snapshot matches the reviewed raw indicator. Empty or mismatched inputs
+retain definition identity but redact values and all run/observation evidence. Reads do
+not fall back to older versions, execute Analytics, or contact providers.
+
 Dashboard summaries return only persisted state. Comparisons are computed by the
 backend, missing metrics are explicit, and GET requests never execute Analytics.
 Next.js Server Components fetch each definition and summary in parallel through a

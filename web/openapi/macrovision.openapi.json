@@ -4377,11 +4377,13 @@
             "type": "string"
           },
           "private_preview": {
+            "const": true,
             "default": true,
             "title": "Private Preview",
             "type": "boolean"
           },
           "public_eligibility": {
+            "const": false,
             "default": false,
             "title": "Public Eligibility",
             "type": "boolean"

@@ -2529,13 +2529,15 @@ export interface components {
             /**
              * Private Preview
              * @default true
+             * @constant
              */
-            private_preview: boolean;
+            private_preview: true;
             /**
              * Public Eligibility
              * @default false
+             * @constant
              */
-            public_eligibility: boolean;
+            public_eligibility: false;
         };
         /**
          * IndicatorCurationStatus

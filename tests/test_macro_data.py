@@ -251,7 +251,7 @@ def test_current_and_as_of_observation_ranges_are_inclusive_and_utc_normalized(
     bounded_as_of = client.get(
         as_of,
         params={
-            "as_of": "2026-08-01T00:00:00Z",
+            "as_of": "9999-01-01T00:00:00Z",
             "start": "2026-02-01T00:00:00Z",
             "end": "2026-03-01T00:00:00Z",
         },

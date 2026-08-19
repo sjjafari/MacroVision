@@ -82,8 +82,17 @@ Decimal comparison path, preserve eight-decimal strings, and return safe incompa
 states for zero references or non-representable results.
 
 Related-derived reads use only reviewed relationships and the latest completed
-persisted result for the exact latest definition version. They never discover every
-Analytics definition, execute Analytics, create a run, or contact a provider.
+persisted result for the exact latest definition version. That version must contain at
+least one persisted input whose `source_code_snapshot` exactly matches the reviewed raw
+indicator code. Empty or unrelated input sets produce `definition_source_mismatch` and
+expose definition identity without value, run, observation, cutoff, or completion
+evidence. They never fall back to another version, discover every Analytics definition,
+execute Analytics, create a run, or contact a provider.
+
+The curation flags are fixed transport constants: `private_preview` is always `true`
+and `public_eligibility` is always `false`. Catalog `search` and `geography` filters are
+trimmed before case-insensitive matching; whitespace-only values are rejected rather
+than silently becoming unfiltered reads.
 
 Phase 3B frontend wiring remains pending: `/fa/indicators` and
 `/fa/indicators/[seriesId]` are still shells. Authentication is absent and public

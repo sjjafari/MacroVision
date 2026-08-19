@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, StringConstraints
 
 from macrovision.dashboard_schemas import DashboardComparison, DashboardFreshness
 from macrovision.macro_data_models import DataFrequency, SeriesCategory
@@ -93,8 +93,8 @@ class IndicatorCurationRead(IndicatorModel):
     curation_status: IndicatorCurationStatus
     catalog_order: int
     editorial_updated_at: datetime
-    private_preview: bool = True
-    public_eligibility: bool = False
+    private_preview: Literal[True] = True
+    public_eligibility: Literal[False] = False
 
 
 class IndicatorPresentationRead(IndicatorModel):
@@ -186,7 +186,11 @@ class RelatedDerivedRead(IndicatorModel):
     items: list[RelatedDerivedItem]
 
 
-IndicatorSearch = Annotated[str, Field(min_length=1, max_length=120)]
+IndicatorReaderFilter = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=120),
+]
+IndicatorSearch = IndicatorReaderFilter
 PositiveSourceId = Annotated[int, Field(gt=0)]
 
 # OpenAPI must retain exact data values as strings at the transport boundary.

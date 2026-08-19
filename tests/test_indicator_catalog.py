@@ -14,6 +14,7 @@ from macrovision.analytics_models import (
     DerivedObservation,
     DerivedSeriesDefinition,
     DerivedSeriesDefinitionVersion,
+    DerivedSeriesInput,
 )
 from macrovision.indicator_catalog import (
     INDICATOR_CATALOG,
@@ -23,6 +24,7 @@ from macrovision.indicator_catalog import (
     validate_indicator_catalog,
 )
 from macrovision.indicator_schemas import (
+    IndicatorCurationRead,
     IndicatorCurationStatus,
     IndicatorRelationCode,
     IndicatorSeasonalAdjustmentStatus,
@@ -158,6 +160,7 @@ def _seed_derived(
     code: str = "ANALYTICS.CPI.YOY",
     enabled: bool = True,
     with_result: bool = True,
+    input_series: tuple[DataSeries, ...] | None = None,
 ) -> DerivedSeriesDefinition:
     definition = DerivedSeriesDefinition(
         code=code,
@@ -180,6 +183,22 @@ def _seed_derived(
         engine_contract_version="1",
         change_note="Reviewed",
     )
+    for position, input_series_item in enumerate(
+        input_series if input_series is not None else (series,)
+    ):
+        version.inputs.append(
+            DerivedSeriesInput(
+                position=position,
+                alias="source" if position == 0 else f"source_{position}",
+                source_series=input_series_item,
+                source_code_snapshot=input_series_item.code,
+                source_unit_snapshot=input_series_item.unit,
+                source_frequency_snapshot=input_series_item.frequency.value,
+                source_geography_snapshot=input_series_item.geography,
+                source_currency_snapshot=input_series_item.currency,
+                source_seasonal_adjustment_snapshot=input_series_item.seasonal_adjustment.value,
+            )
+        )
     if with_result:
         run = AnalyticsRun(
             definition_version=version,
@@ -317,6 +336,26 @@ def test_catalog_filters_are_and_combined_and_case_insensitive(
 def test_catalog_filter_validation_is_controlled(client: TestClient) -> None:
     assert client.get("/api/v1/indicator-catalog?source_id=0").status_code == 422
     assert client.get(f"/api/v1/indicator-catalog?search={'x' * 121}").status_code == 422
+    assert client.get("/api/v1/indicator-catalog", params={"search": "   "}).status_code == 422
+    assert client.get("/api/v1/indicator-catalog", params={"geography": "   "}).status_code == 422
+
+
+def test_catalog_reader_filters_are_trimmed_and_case_insensitive(
+    client: TestClient, db_session: Session
+) -> None:
+    _seed_series(db_session)
+    search = client.get(
+        "/api/v1/indicator-catalog",
+        params={"search": "  شاخص قیمت مصرف‌کننده  "},
+    )
+    geography = client.get(
+        "/api/v1/indicator-catalog",
+        params={"geography": "  us  "},
+    )
+    assert search.status_code == 200
+    assert search.json()["total"] == 1
+    assert geography.status_code == 200
+    assert geography.json()["total"] == 1
 
 
 def test_reviewed_inactive_detail_preserves_canonical_source_and_curation(
@@ -343,6 +382,23 @@ def test_reviewed_inactive_detail_preserves_canonical_source_and_curation(
     assert "provider_internal" not in serialized
     assert "fingerprint" not in serialized
     assert "secret" not in serialized
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("private_preview", False), ("public_eligibility", True)],
+)
+def test_private_preview_contract_rejects_contradictory_values(field: str, value: bool) -> None:
+    payload = {
+        "curation_status": "reviewed_private",
+        "catalog_order": 10,
+        "editorial_updated_at": datetime(2026, 7, 30, tzinfo=UTC),
+        "private_preview": True,
+        "public_eligibility": False,
+    }
+    payload[field] = value
+    with pytest.raises(ValidationError):
+        IndicatorCurationRead.model_validate(payload)
 
 
 def test_unconfigured_withheld_and_missing_detail_are_indistinguishable(
@@ -560,6 +616,149 @@ def test_related_derived_returns_exact_persisted_identity_without_fingerprints(
     assert "fingerprint" not in response.text
 
 
+@pytest.mark.parametrize("input_mode", ["zero", "unrelated", "multiple_unrelated"])
+def test_related_derived_source_mismatch_redacts_all_persisted_evidence(
+    client: TestClient,
+    db_session: Session,
+    input_mode: str,
+) -> None:
+    reviewed = _seed_series(db_session)
+    unrelated = _seed_series(
+        db_session,
+        code="FRED.UNRATE",
+        name="Unemployment Rate",
+        category=SeriesCategory.employment,
+    )
+    second_unrelated = _seed_series(
+        db_session,
+        code="FRED.M2SL",
+        name="Money Stock",
+        category=SeriesCategory.liquidity,
+    )
+    inputs = {
+        "zero": (),
+        "unrelated": (unrelated,),
+        "multiple_unrelated": (unrelated, second_unrelated),
+    }[input_mode]
+    definition = _seed_derived(db_session, reviewed, input_series=inputs)
+
+    response = client.get(f"/api/v1/indicator-catalog/{reviewed.id}/related-derived")
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["state"] == "persisted_result_missing"
+    assert item["missing_reason"] == "definition_source_mismatch"
+    assert item["definition_id"] == definition.id
+    assert item["definition_version"] == 3
+    for field in (
+        "value",
+        "observed_at",
+        "run_id",
+        "observation_id",
+        "calculation_cutoff",
+        "completed_at",
+    ):
+        assert item[field] is None
+
+
+def test_related_derived_accepts_multiple_inputs_when_exact_source_is_present(
+    client: TestClient, db_session: Session
+) -> None:
+    reviewed = _seed_series(db_session)
+    unrelated = _seed_series(
+        db_session,
+        code="FRED.UNRATE",
+        name="Unemployment Rate",
+        category=SeriesCategory.employment,
+    )
+    _seed_derived(db_session, reviewed, input_series=(unrelated, reviewed))
+
+    response = client.get(f"/api/v1/indicator-catalog/{reviewed.id}/related-derived")
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["state"] == "available"
+    assert item["value"] == "3.25000000"
+    assert all(
+        item[field] is not None
+        for field in (
+            "observed_at",
+            "run_id",
+            "observation_id",
+            "calculation_cutoff",
+            "completed_at",
+        )
+    )
+
+
+def test_related_derived_read_never_executes_analytics_or_contacts_provider(
+    client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from macrovision import analytics_services, provider_services
+
+    reviewed = _seed_series(db_session)
+    _seed_derived(db_session, reviewed)
+
+    def forbidden(*_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError("Reader must not execute Analytics or contact a provider")
+
+    monkeypatch.setattr(analytics_services, "execute_analytics_run", forbidden)
+    monkeypatch.setattr(provider_services, "synchronize_provider_series", forbidden)
+
+    response = client.get(f"/api/v1/indicator-catalog/{reviewed.id}/related-derived")
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["state"] == "available"
+
+
+def test_related_derived_does_not_fall_back_from_latest_definition_version(
+    client: TestClient, db_session: Session
+) -> None:
+    reviewed = _seed_series(db_session)
+    definition = _seed_derived(db_session, reviewed)
+    latest = DerivedSeriesDefinitionVersion(
+        definition=definition,
+        version=4,
+        transformation_type="year_over_year_percent_change",
+        parameters={"periods": 12},
+        parameters_fingerprint="e" * 64,
+        output_unit="percent",
+        output_frequency="monthly",
+        output_geography="US",
+        output_currency=None,
+        output_seasonal_adjustment="adjusted",
+        engine_contract_version="1",
+        change_note="Latest version has no persisted result",
+    )
+    latest.inputs.append(
+        DerivedSeriesInput(
+            position=0,
+            alias="source",
+            source_series=reviewed,
+            source_code_snapshot=reviewed.code,
+            source_unit_snapshot=reviewed.unit,
+            source_frequency_snapshot=reviewed.frequency.value,
+            source_geography_snapshot=reviewed.geography,
+            source_currency_snapshot=reviewed.currency,
+            source_seasonal_adjustment_snapshot=reviewed.seasonal_adjustment.value,
+        )
+    )
+    db_session.add(latest)
+    db_session.commit()
+
+    response = client.get(f"/api/v1/indicator-catalog/{reviewed.id}/related-derived")
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["definition_version"] == 4
+    assert item["state"] == "persisted_result_missing"
+    assert item["missing_reason"] == "persisted_result_missing"
+    assert item["run_id"] is None
+    assert item["observation_id"] is None
+
+
 @pytest.mark.parametrize(
     ("seed_mode", "expected_state"),
     [
@@ -648,3 +847,6 @@ def test_indicator_openapi_contract_is_private_typed_and_fingerprint_free(
         "parameters_fingerprint",
     ):
         assert fingerprint not in serialized
+    curation = document["components"]["schemas"]["IndicatorCurationRead"]["properties"]
+    assert curation["private_preview"]["const"] is True
+    assert curation["public_eligibility"]["const"] is False
