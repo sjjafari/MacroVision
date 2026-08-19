@@ -161,6 +161,7 @@ def _seed_derived(
     enabled: bool = True,
     with_result: bool = True,
     input_series: tuple[DataSeries, ...] | None = None,
+    input_code_snapshots: tuple[str, ...] | None = None,
 ) -> DerivedSeriesDefinition:
     definition = DerivedSeriesDefinition(
         code=code,
@@ -183,15 +184,22 @@ def _seed_derived(
         engine_contract_version="1",
         change_note="Reviewed",
     )
-    for position, input_series_item in enumerate(
-        input_series if input_series is not None else (series,)
+    selected_inputs = input_series if input_series is not None else (series,)
+    selected_snapshots = (
+        input_code_snapshots
+        if input_code_snapshots is not None
+        else tuple(item.code for item in selected_inputs)
+    )
+    assert len(selected_inputs) == len(selected_snapshots)
+    for position, (input_series_item, code_snapshot) in enumerate(
+        zip(selected_inputs, selected_snapshots, strict=True)
     ):
         version.inputs.append(
             DerivedSeriesInput(
                 position=position,
                 alias="source" if position == 0 else f"source_{position}",
                 source_series=input_series_item,
-                source_code_snapshot=input_series_item.code,
+                source_code_snapshot=code_snapshot,
                 source_unit_snapshot=input_series_item.unit,
                 source_frequency_snapshot=input_series_item.frequency.value,
                 source_geography_snapshot=input_series_item.geography,
@@ -689,6 +697,60 @@ def test_related_derived_accepts_multiple_inputs_when_exact_source_is_present(
             "completed_at",
         )
     )
+
+
+@pytest.mark.parametrize(
+    ("identity_case", "expected_state"),
+    [
+        ("different_id_matching_code", "persisted_result_missing"),
+        ("matching_id_different_code", "persisted_result_missing"),
+        ("matching_id_matching_code", "available"),
+    ],
+)
+def test_related_derived_requires_matching_source_id_and_code_snapshot(
+    client: TestClient,
+    db_session: Session,
+    identity_case: str,
+    expected_state: str,
+) -> None:
+    reviewed = _seed_series(db_session)
+    unrelated = _seed_series(
+        db_session,
+        code="FRED.UNRATE",
+        name="Unemployment Rate",
+        category=SeriesCategory.employment,
+    )
+    source_series = unrelated if identity_case == "different_id_matching_code" else reviewed
+    code_snapshot = (
+        unrelated.code if identity_case == "matching_id_different_code" else reviewed.code
+    )
+    _seed_derived(
+        db_session,
+        reviewed,
+        input_series=(source_series,),
+        input_code_snapshots=(code_snapshot,),
+    )
+
+    response = client.get(f"/api/v1/indicator-catalog/{reviewed.id}/related-derived")
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["state"] == expected_state
+    evidence_fields = (
+        "value",
+        "observed_at",
+        "run_id",
+        "observation_id",
+        "calculation_cutoff",
+        "completed_at",
+    )
+    if expected_state == "available":
+        assert item["missing_reason"] is None
+        assert item["value"] == "3.25000000"
+        assert all(item[field] is not None for field in evidence_fields)
+    else:
+        assert item["missing_reason"] == "definition_source_mismatch"
+        assert all(item[field] is None for field in evidence_fields)
 
 
 def test_related_derived_read_never_executes_analytics_or_contacts_provider(

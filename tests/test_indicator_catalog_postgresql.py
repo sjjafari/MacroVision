@@ -86,3 +86,57 @@ def test_postgresql_empty_related_inputs_are_rejected_like_sqlite() -> None:
         transaction.rollback()
         connection.close()
         engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("identity_case", "expected_state"),
+    [
+        ("different_id_matching_code", "persisted_result_missing"),
+        ("matching_id_different_code", "persisted_result_missing"),
+        ("matching_id_matching_code", "available"),
+    ],
+)
+def test_postgresql_related_identity_requires_matching_id_and_snapshot(
+    identity_case: str, expected_state: str
+) -> None:
+    assert POSTGRES_TEST_URL is not None
+    engine = create_database_engine(POSTGRES_TEST_URL)
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection, autoflush=False, expire_on_commit=False)
+    try:
+        reviewed = _seed_series(session)
+        unrelated = _seed_series(
+            session,
+            code="FRED.UNRATE",
+            name="Unemployment Rate",
+        )
+        source_series = unrelated if identity_case == "different_id_matching_code" else reviewed
+        code_snapshot = (
+            unrelated.code if identity_case == "matching_id_different_code" else reviewed.code
+        )
+        _seed_derived(
+            session,
+            reviewed,
+            input_series=(source_series,),
+            input_code_snapshots=(code_snapshot,),
+        )
+        item = related_derived(session, reviewed.id).items[0]
+        assert item.state == expected_state
+        if expected_state == "available":
+            assert str(item.value) == "3.25000000"
+            assert item.run_id is not None
+            assert item.observation_id is not None
+        else:
+            assert item.missing_reason == "definition_source_mismatch"
+            assert item.value is None
+            assert item.observed_at is None
+            assert item.run_id is None
+            assert item.observation_id is None
+            assert item.calculation_cutoff is None
+            assert item.completed_at is None
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
+        engine.dispose()

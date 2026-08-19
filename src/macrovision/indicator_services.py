@@ -336,7 +336,10 @@ def related_derived(session: Session, series_id: int) -> RelatedDerivedRead:
         relationship_eligible = bool(
             result is not None
             and result.version.inputs
-            and any(item.source_code_snapshot == series.code for item in result.version.inputs)
+            and any(
+                item.source_series_id == series.id and item.source_code_snapshot == series.code
+                for item in result.version.inputs
+            )
         )
         if definition is None:
             state = RelatedDerivedState.definition_missing
