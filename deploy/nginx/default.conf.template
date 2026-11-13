@@ -42,7 +42,7 @@ server {
     proxy_set_header X-Auth-Request-User $user;
     proxy_set_header X-MacroVision-Proxy-Secret "${MACROVISION_TRUSTED_PROXY_SECRET}";
     proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Proto https;\n    proxy_set_header X-Forwarded-Host $host;\n    proxy_set_header X-Forwarded-Host $host;
     proxy_pass http://macrovision_web;
   }
 
