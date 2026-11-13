@@ -7,7 +7,7 @@ FastAPI or Next.js containers directly.
 
 - NGINX is the only Internet-facing container and terminates TLS.
 - OAuth2 Proxy uses GitHub OAuth and Redis-backed encrypted sessions.
-- OAuth2 Proxy owns login/session and OAuth CSRF cookies.
+- OAuth2 Proxy owns login/session and OAuth CSRF cookies. Research and API mutations additionally require same-origin `Origin`/`Sec-Fetch-Site` validation at the Web boundary.
 - NGINX uses `auth_request`, overwrites identity headers, injects a private
   `X-MacroVision-Proxy-Secret`, and applies IP rate limits.
 - Next.js independently verifies the trusted ingress secret and maps GitHub
@@ -66,10 +66,10 @@ rate-limit 429 behavior, backup/restore of PostgreSQL, and that ports 3000,
 
 ## Operational gates
 
-- Back up PostgreSQL before upgrades and test restore periodically.
+- Back up PostgreSQL before upgrades with `sh deploy/backup-postgres.sh /secure/backup/path` and verify each backup in an isolated database with `sh deploy/restore-verify.sh <dump>` before relying on it.
 - Rotate OAuth client secret, cookie secret, DB password, and trusted proxy
   secret through the deployment secret manager.
 - Keep Next.js and production dependencies behind the CI production-audit gate.
-- Monitor 401/403/429/5xx rates and container restarts.
+- Monitor 401/403/429/5xx rates and container restarts. Ship stdout/stderr to append-only centralized logging; Web emits structured JSON audit events for authenticated research definitions, Analytics runs, and generic API mutations.
 - Never log OAuth tokens, cookies, provider credentials, or the trusted proxy
   secret.
