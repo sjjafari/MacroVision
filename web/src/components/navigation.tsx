@@ -10,7 +10,7 @@ export function isNavigationRouteActive(currentPath: string, routePath: string):
   if (routePath === "/fa") {
     return currentPath === routePath;
   }
-  if (routePath === "/fa/indicators") {
+  if (routePath === "/fa/indicators" || routePath === "/fa/magazine") {
     return currentPath === routePath || currentPath.startsWith(`${routePath}/`);
   }
   return currentPath === routePath;
