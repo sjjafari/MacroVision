@@ -78,7 +78,7 @@ mutation, authentication, or public deployment. `reviewed_private` is not public
 eligibility. Exact Decimal strings remain server-owned business data; browser Number
 conversion is limited to chart geometry, and current/as-of modes are visibly distinct.
 Package and OpenAPI versions remain `0.7.0`, Alembic head remains `20260726_0009`, and
-Phase 4 comparison remains pending.
+Phase 4 comparison is connected through the bounded `/api/v1/comparison` read model; Phase 5 research remains pending.
 
 Historical mode filters the effective observation's revisions by canonical
 `revision_timestamp <= as_of`, ignoring invalid timestamps and never comparing
@@ -168,3 +168,8 @@ This frontend is a private foundation preview. Authentication, authorization, se
 sessions, CSRF protection, rate limiting, publication eligibility, and public
 deployment are not implemented or approved. `robots.txt` is an indexing hint, not an
 access-control mechanism.
+
+
+## Phase 4 comparison
+
+`/fa/compare` is a private research surface for at most four reviewed raw or persisted derived series. URL-backed selections and date bounds are sent to the server-only comparison transport. The backend returns independent series with explicit frequency warnings and axis identities; the browser does not align, resample, fill, interpolate, or calculate financial transformations. Exact Decimal strings remain authoritative in tables and tooltips, while finite `Number` projection is restricted to ECharts geometry. An optional historical cutoff uses persisted no-look-ahead reads.\n
