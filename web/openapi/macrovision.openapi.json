@@ -409,6 +409,147 @@
         "title": "AnalyticsRunSummary",
         "type": "object"
       },
+      "ArticleCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "author_display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Author Display Name",
+            "type": "string"
+          },
+          "body_fa": {
+            "maxLength": 50000,
+            "minLength": 1,
+            "title": "Body Fa",
+            "type": "string"
+          },
+          "category": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Category",
+            "type": "string"
+          },
+          "dek_fa": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Dek Fa",
+            "type": "string"
+          },
+          "slug": {
+            "maxLength": 160,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Slug",
+            "type": "string"
+          },
+          "title_fa": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title_fa",
+          "dek_fa",
+          "body_fa",
+          "category",
+          "author_display_name"
+        ],
+        "title": "ArticleCreate",
+        "type": "object"
+      },
+      "ArticlePublish": {
+        "additionalProperties": false,
+        "properties": {
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "published_at"
+        ],
+        "title": "ArticlePublish",
+        "type": "object"
+      },
+      "ArticleRead": {
+        "additionalProperties": false,
+        "properties": {
+          "author_display_name": {
+            "title": "Author Display Name",
+            "type": "string"
+          },
+          "body_fa": {
+            "title": "Body Fa",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dek_fa": {
+            "title": "Dek Fa",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title_fa",
+          "dek_fa",
+          "body_fa",
+          "category",
+          "author_display_name",
+          "status",
+          "published_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ArticleRead",
+        "type": "object"
+      },
       "CashBalanceRead": {
         "properties": {
           "balance": {
@@ -6497,6 +6638,336 @@
         "title": "ProviderSyncTriggerType",
         "type": "string"
       },
+      "PublicArticlePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicArticleRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "offset",
+          "total",
+          "items"
+        ],
+        "title": "PublicArticlePage",
+        "type": "object"
+      },
+      "PublicArticleRead": {
+        "additionalProperties": false,
+        "properties": {
+          "author_display_name": {
+            "title": "Author Display Name",
+            "type": "string"
+          },
+          "body_fa": {
+            "title": "Body Fa",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "dek_fa": {
+            "title": "Dek Fa",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title_fa": {
+            "title": "Title Fa",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title_fa",
+          "dek_fa",
+          "body_fa",
+          "category",
+          "author_display_name",
+          "published_at"
+        ],
+        "title": "PublicArticleRead",
+        "type": "object"
+      },
+      "PublicIndicatorCatalogItem": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/IndicatorAvailability"
+          },
+          "catalog_order": {
+            "title": "Catalog Order",
+            "type": "integer"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SeriesCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curation_status": {
+            "$ref": "#/components/schemas/IndicatorCurationStatus"
+          },
+          "description_fa": {
+            "title": "Description Fa",
+            "type": "string"
+          },
+          "display_name_fa": {
+            "title": "Display Name Fa",
+            "type": "string"
+          },
+          "editorial_updated_at": {
+            "format": "date-time",
+            "title": "Editorial Updated At",
+            "type": "string"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataFrequency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geography": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography"
+          },
+          "localized_unit_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Localized Unit Label"
+          },
+          "operational_is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operational Is Active"
+          },
+          "original_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Name"
+          },
+          "private_preview": {
+            "const": false,
+            "default": false,
+            "title": "Private Preview",
+            "type": "boolean"
+          },
+          "public_eligibility": {
+            "const": true,
+            "default": true,
+            "title": "Public Eligibility",
+            "type": "boolean"
+          },
+          "seasonal_adjustment_status": {
+            "$ref": "#/components/schemas/IndicatorSeasonalAdjustmentStatus"
+          },
+          "series_code": {
+            "title": "Series Code",
+            "type": "string"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndicatorSourceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "catalog_order",
+          "curation_status",
+          "availability",
+          "series_id",
+          "series_code",
+          "display_name_fa",
+          "original_name",
+          "description_fa",
+          "localized_unit_label",
+          "category",
+          "geography",
+          "frequency",
+          "unit",
+          "seasonal_adjustment_status",
+          "operational_is_active",
+          "source",
+          "editorial_updated_at"
+        ],
+        "title": "PublicIndicatorCatalogItem",
+        "type": "object"
+      },
+      "PublicIndicatorCatalogPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicIndicatorCatalogItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "offset",
+          "total",
+          "items"
+        ],
+        "title": "PublicIndicatorCatalogPage",
+        "type": "object"
+      },
+      "PublicIndicatorCurationRead": {
+        "additionalProperties": false,
+        "properties": {
+          "catalog_order": {
+            "title": "Catalog Order",
+            "type": "integer"
+          },
+          "editorial_updated_at": {
+            "format": "date-time",
+            "title": "Editorial Updated At",
+            "type": "string"
+          },
+          "private_preview": {
+            "const": false,
+            "default": false,
+            "title": "Private Preview",
+            "type": "boolean"
+          },
+          "public_eligibility": {
+            "const": true,
+            "default": true,
+            "title": "Public Eligibility",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "catalog_order",
+          "editorial_updated_at"
+        ],
+        "title": "PublicIndicatorCurationRead",
+        "type": "object"
+      },
+      "PublicIndicatorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical": {
+            "$ref": "#/components/schemas/IndicatorCanonicalRead"
+          },
+          "curation": {
+            "$ref": "#/components/schemas/PublicIndicatorCurationRead"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/IndicatorPresentationRead"
+          },
+          "source": {
+            "$ref": "#/components/schemas/IndicatorSourceRead"
+          }
+        },
+        "required": [
+          "curation",
+          "presentation",
+          "canonical",
+          "source"
+        ],
+        "title": "PublicIndicatorDetail",
+        "type": "object"
+      },
       "QualityIssueAction": {
         "properties": {
           "actor_reference": {
@@ -7511,6 +7982,50 @@
         "title": "StaleScanRead",
         "type": "object"
       },
+      "SubscriptionCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "consent": {
+            "const": true,
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "email": {
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "consent"
+        ],
+        "title": "SubscriptionCreate",
+        "type": "object"
+      },
+      "SubscriptionReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "active",
+            "title": "Status",
+            "type": "string"
+          },
+          "unsubscribe_token": {
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Unsubscribe Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "unsubscribe_token"
+        ],
+        "title": "SubscriptionReceipt",
+        "type": "object"
+      },
       "TransactionCreate": {
         "properties": {
           "amount": {
@@ -7750,6 +8265,37 @@
         ],
         "title": "TransformationType",
         "type": "string"
+      },
+      "UnsubscribeReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "unsubscribed",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "UnsubscribeReceipt",
+        "type": "object"
+      },
+      "UnsubscribeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "UnsubscribeRequest",
+        "type": "object"
       }
     }
   },
@@ -8293,6 +8839,139 @@
         "summary": "Comparison",
         "tags": [
           "comparison"
+        ]
+      }
+    },
+    "/api/v1/content/articles": {
+      "post": {
+        "operationId": "admin_create_article_api_v1_content_articles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Admin Create Article",
+        "tags": [
+          "content platform"
+        ]
+      }
+    },
+    "/api/v1/content/articles/{article_id}/publish": {
+      "post": {
+        "operationId": "admin_publish_article_api_v1_content_articles__article_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "article_id",
+            "required": true,
+            "schema": {
+              "title": "Article Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticlePublish"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Admin Publish Article",
+        "tags": [
+          "content platform"
         ]
       }
     },
@@ -14500,6 +15179,662 @@
         "summary": "Synchronize Fred",
         "tags": [
           "providers"
+        ]
+      }
+    },
+    "/api/v1/public/content/articles": {
+      "get": {
+        "operationId": "public_articles_api_v1_public_content_articles_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicArticlePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Public Articles",
+        "tags": [
+          "content platform"
+        ]
+      }
+    },
+    "/api/v1/public/content/articles/{slug}": {
+      "get": {
+        "operationId": "public_article_api_v1_public_content_articles__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicArticleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Public Article",
+        "tags": [
+          "content platform"
+        ]
+      }
+    },
+    "/api/v1/public/indicator-catalog": {
+      "get": {
+        "operationId": "list_public_catalog_api_v1_public_indicator_catalog_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SeriesCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geography",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geography"
+            }
+          },
+          {
+            "in": "query",
+            "name": "frequency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DataFrequency"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Frequency"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operational_is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Operational Is Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIndicatorCatalogPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "List Public Catalog",
+        "tags": [
+          "public indicator catalog"
+        ]
+      }
+    },
+    "/api/v1/public/indicator-catalog/{series_id}": {
+      "get": {
+        "operationId": "get_public_indicator_api_v1_public_indicator_catalog__series_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIndicatorDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Get Public Indicator",
+        "tags": [
+          "public indicator catalog"
+        ]
+      }
+    },
+    "/api/v1/public/indicator-catalog/{series_id}/related-derived": {
+      "get": {
+        "operationId": "get_public_related_api_v1_public_indicator_catalog__series_id__related_derived_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedDerivedRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Get Public Related",
+        "tags": [
+          "public indicator catalog"
+        ]
+      }
+    },
+    "/api/v1/public/indicator-catalog/{series_id}/snapshot": {
+      "get": {
+        "operationId": "get_public_snapshot_api_v1_public_indicator_catalog__series_id__snapshot_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Get Public Snapshot",
+        "tags": [
+          "public indicator catalog"
+        ]
+      }
+    },
+    "/api/v1/public/subscriptions": {
+      "post": {
+        "operationId": "create_subscription_api_v1_public_subscriptions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Create Subscription",
+        "tags": [
+          "content platform"
+        ]
+      }
+    },
+    "/api/v1/public/subscriptions/unsubscribe": {
+      "post": {
+        "operationId": "cancel_subscription_api_v1_public_subscriptions_unsubscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsubscribeReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Cancel Subscription",
+        "tags": [
+          "content platform"
         ]
       }
     },

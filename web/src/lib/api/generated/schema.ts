@@ -89,6 +89,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/content/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin Create Article */
+        post: operations["admin_create_article_api_v1_content_articles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/content/articles/{article_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin Publish Article */
+        post: operations["admin_publish_article_api_v1_content_articles__article_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboards": {
         parameters: {
             query?: never;
@@ -1188,6 +1222,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/content/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Articles */
+        get: operations["public_articles_api_v1_public_content_articles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/content/articles/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Article */
+        get: operations["public_article_api_v1_public_content_articles__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/indicator-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Public Catalog */
+        get: operations["list_public_catalog_api_v1_public_indicator_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/indicator-catalog/{series_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Indicator */
+        get: operations["get_public_indicator_api_v1_public_indicator_catalog__series_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/indicator-catalog/{series_id}/related-derived": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Related */
+        get: operations["get_public_related_api_v1_public_indicator_catalog__series_id__related_derived_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/indicator-catalog/{series_id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Snapshot */
+        get: operations["get_public_snapshot_api_v1_public_indicator_catalog__series_id__snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Subscription */
+        post: operations["create_subscription_api_v1_public_subscriptions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/subscriptions/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Subscription */
+        post: operations["cancel_subscription_api_v1_public_subscriptions_unsubscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1355,6 +1525,60 @@ export interface components {
             /** Started At */
             started_at: string | null;
             status: components["schemas"]["AnalyticsRunStatus"];
+        };
+        /** ArticleCreate */
+        ArticleCreate: {
+            /** Author Display Name */
+            author_display_name: string;
+            /** Body Fa */
+            body_fa: string;
+            /** Category */
+            category: string;
+            /** Dek Fa */
+            dek_fa: string;
+            /** Slug */
+            slug: string;
+            /** Title Fa */
+            title_fa: string;
+        };
+        /** ArticlePublish */
+        ArticlePublish: {
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+        };
+        /** ArticleRead */
+        ArticleRead: {
+            /** Author Display Name */
+            author_display_name: string;
+            /** Body Fa */
+            body_fa: string;
+            /** Category */
+            category: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dek Fa */
+            dek_fa: string;
+            /** Id */
+            id: number;
+            /** Published At */
+            published_at: string | null;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Title Fa */
+            title_fa: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** CashBalanceRead */
         CashBalanceRead: {
@@ -3284,6 +3508,123 @@ export interface components {
          * @enum {string}
          */
         ProviderSyncTriggerType: "scheduled" | "manual";
+        /** PublicArticlePage */
+        PublicArticlePage: {
+            /** Items */
+            items: components["schemas"]["PublicArticleRead"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** PublicArticleRead */
+        PublicArticleRead: {
+            /** Author Display Name */
+            author_display_name: string;
+            /** Body Fa */
+            body_fa: string;
+            /** Category */
+            category: string;
+            /** Dek Fa */
+            dek_fa: string;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /** Slug */
+            slug: string;
+            /** Title Fa */
+            title_fa: string;
+        };
+        /** PublicIndicatorCatalogItem */
+        PublicIndicatorCatalogItem: {
+            availability: components["schemas"]["IndicatorAvailability"];
+            /** Catalog Order */
+            catalog_order: number;
+            category: components["schemas"]["SeriesCategory"] | null;
+            curation_status: components["schemas"]["IndicatorCurationStatus"];
+            /** Description Fa */
+            description_fa: string;
+            /** Display Name Fa */
+            display_name_fa: string;
+            /**
+             * Editorial Updated At
+             * Format: date-time
+             */
+            editorial_updated_at: string;
+            frequency: components["schemas"]["DataFrequency"] | null;
+            /** Geography */
+            geography: string | null;
+            /** Localized Unit Label */
+            localized_unit_label: string | null;
+            /** Operational Is Active */
+            operational_is_active: boolean | null;
+            /** Original Name */
+            original_name: string | null;
+            /**
+             * Private Preview
+             * @default false
+             * @constant
+             */
+            private_preview: false;
+            /**
+             * Public Eligibility
+             * @default true
+             * @constant
+             */
+            public_eligibility: true;
+            seasonal_adjustment_status: components["schemas"]["IndicatorSeasonalAdjustmentStatus"];
+            /** Series Code */
+            series_code: string;
+            /** Series Id */
+            series_id: number | null;
+            source: components["schemas"]["IndicatorSourceSummary"] | null;
+            /** Unit */
+            unit: string | null;
+        };
+        /** PublicIndicatorCatalogPage */
+        PublicIndicatorCatalogPage: {
+            /** Items */
+            items: components["schemas"]["PublicIndicatorCatalogItem"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** PublicIndicatorCurationRead */
+        PublicIndicatorCurationRead: {
+            /** Catalog Order */
+            catalog_order: number;
+            /**
+             * Editorial Updated At
+             * Format: date-time
+             */
+            editorial_updated_at: string;
+            /**
+             * Private Preview
+             * @default false
+             * @constant
+             */
+            private_preview: false;
+            /**
+             * Public Eligibility
+             * @default true
+             * @constant
+             */
+            public_eligibility: true;
+        };
+        /** PublicIndicatorDetail */
+        PublicIndicatorDetail: {
+            canonical: components["schemas"]["IndicatorCanonicalRead"];
+            curation: components["schemas"]["PublicIndicatorCurationRead"];
+            presentation: components["schemas"]["IndicatorPresentationRead"];
+            source: components["schemas"]["IndicatorSourceRead"];
+        };
         /** QualityIssueAction */
         QualityIssueAction: {
             /** Actor Reference */
@@ -3627,6 +3968,26 @@ export interface components {
             /** Inspected Count */
             inspected_count: number;
         };
+        /** SubscriptionCreate */
+        SubscriptionCreate: {
+            /**
+             * Consent
+             * @constant
+             */
+            consent: true;
+            /** Email */
+            email: string;
+        };
+        /** SubscriptionReceipt */
+        SubscriptionReceipt: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "active";
+            /** Unsubscribe Token */
+            unsubscribe_token: string;
+        };
         /** TransactionCreate */
         TransactionCreate: {
             /** Amount */
@@ -3697,6 +4058,19 @@ export interface components {
          * @enum {string}
          */
         TransformationType: "difference" | "percent_change" | "year_over_year_percent_change" | "ratio" | "spread" | "moving_average" | "rolling_standard_deviation" | "rolling_z_score" | "rebase_index";
+        /** UnsubscribeReceipt */
+        UnsubscribeReceipt: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "unsubscribed";
+        };
+        /** UnsubscribeRequest */
+        UnsubscribeRequest: {
+            /** Token */
+            token: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -3938,6 +4312,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparisonRead"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_create_article_api_v1_content_articles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleRead"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_publish_article_api_v1_content_articles__article_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                article_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticlePublish"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleRead"];
                 };
             };
             /** @description Resource not found */
@@ -8084,6 +8562,413 @@ export interface operations {
             };
             /** @description Provider timeout */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    public_articles_api_v1_public_content_articles_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                category?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicArticlePage"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    public_article_api_v1_public_content_articles__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicArticleRead"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_public_catalog_api_v1_public_indicator_catalog_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                search?: string | null;
+                category?: components["schemas"]["SeriesCategory"] | null;
+                geography?: string | null;
+                frequency?: components["schemas"]["DataFrequency"] | null;
+                source_id?: number | null;
+                operational_is_active?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIndicatorCatalogPage"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_public_indicator_api_v1_public_indicator_catalog__series_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIndicatorDetail"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_public_related_api_v1_public_indicator_catalog__series_id__related_derived_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatedDerivedRead"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_public_snapshot_api_v1_public_indicator_catalog__series_id__snapshot_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorSnapshot"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_subscription_api_v1_public_subscriptions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionReceipt"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel_subscription_api_v1_public_subscriptions_unsubscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnsubscribeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnsubscribeReceipt"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
