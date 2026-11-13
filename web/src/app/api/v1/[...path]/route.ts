@@ -53,7 +53,8 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
   try {
     if (securityMode() === "production") {
       const required = request.method === "GET" || request.method === "HEAD" ? "reader" : "research";
-      const identity = required === "research" ? authorizeMutationHeaders(request.headers, required) : authorizeTrustedHeaders(request.headers, required);\n      if (!identity) {
+      const identity = required === "research" ? authorizeMutationHeaders(request.headers, required) : authorizeTrustedHeaders(request.headers, required);
+      if (!identity) {
         return Response.json({ error: { code: "authentication_required", message: "Authentication required." } }, { status: 401, headers: { "cache-control": "no-store" } });
       }
     }
