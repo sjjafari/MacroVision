@@ -49,7 +49,7 @@ describe("AppShell", () => {
       const href = link.getAttribute("href");
       return href?.startsWith("/fa");
     });
-    expect(navigationLinks).toHaveLength(17);
+    expect(navigationLinks).toHaveLength(19);
     for (const href of [
       "/fa",
       "/fa/markets",
