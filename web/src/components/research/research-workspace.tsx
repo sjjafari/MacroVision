@@ -6,13 +6,13 @@ const transformations=[
 ["difference","تفاضل دوره‌ای"],["percent_change","درصد تغییر"],["year_over_year_percent_change","درصد تغییر سالانه"],["ratio","نسبت"],["spread","اسپرد"],["moving_average","میانگین متحرک"],["rolling_standard_deviation","انحراف معیار متحرک"],["rolling_z_score","Z-Score متحرک"],["rebase_index","بازپایه‌گذاری شاخص"],
 ] as const;
 
-export function ResearchWorkspace({series,definitions,selectedDefinition,run,observations,lineage,error}:{series:DataSeriesRead[];definitions:DerivedSeriesPage;selectedDefinition:DerivedSeriesRead|null;run:AnalyticsRunRead|null;observations:DerivedObservationPage|null;lineage:DerivedObservationLineagePage|null;error?:string}) {
+export function ResearchWorkspace({series,definitions,selectedDefinition,run,observations,lineage,error,csrfToken}:{series:DataSeriesRead[];definitions:DerivedSeriesPage;selectedDefinition:DerivedSeriesRead|null;run:AnalyticsRunRead|null;observations:DerivedObservationPage|null;lineage:DerivedObservationLineagePage|null;error?:string;csrfToken?:string}) {
   return <div className="page-stack research-workspace">
     <header className="indicator-hero"><div><p className="eyebrow">آزمایشگاه پژوهش خصوصی</p><h1>Analytics مستند و قابل بازتولید</h1><p>تعریف تبدیل، اجرای محدود، خروجی دقیق و Lineage نقطه‌ای؛ بدون فرمول دلخواه و بدون اجرای پنهانی.</p></div><span className="preview-badge">Private / Mutation</span></header>
     <div className="private-warning" role="alert"><strong>فقط شبکهٔ مورد اعتماد</strong><p>این سطح Mutation تا تکمیل Authentication، RBAC، Session، CSRF و Rate Limit نباید عمومی شود.</p></div>
     {error&&<section className="state-card state-card-error" role="alert"><span className="state-symbol">!</span><div><h2>عملیات انجام نشد</h2><p>{error}</p></div></section>}
     <section className="research-columns">
-      <form action={createDefinitionAction} className="research-form"><h2>۱. تعریف تحلیل</h2>
+      <form action={createDefinitionAction} className="research-form"><input type="hidden" name="csrf" value={csrfToken??""} /><h2>۱. تعریف تحلیل</h2>
         <label>کد<input name="code" required pattern="[A-Za-z][A-Za-z0-9_.-]{0,119}" placeholder="RESEARCH.CPI.MA" /></label>
         <label>عنوان<input name="title" required maxLength={240} /></label>
         <label>توضیح<textarea name="description" maxLength={2000} /></label>
@@ -24,7 +24,7 @@ export function ResearchWorkspace({series,definitions,selectedDefinition,run,obs
         <label>مقدار پایه Rebase<input name="base_value" inputMode="decimal" defaultValue="100.00000000" /></label>
         <button type="submit">ایجاد تعریف نسخه‌دار</button>
       </form>
-      <form action={executeResearchAction} className="research-form"><h2>۲. اجرای محدود</h2>
+      <form action={executeResearchAction} className="research-form"><input type="hidden" name="csrf" value={csrfToken??""} /><h2>۲. اجرای محدود</h2>
         <label>تعریف<select name="definition_id" required defaultValue={selectedDefinition?.id??""}><option value="">انتخاب</option>{definitions.items.map(d=><option value={d.id} key={d.id}>{d.code} — {d.title}</option>)}</select></label>
         <label>نسخه <small>خالی = آخرین نسخه</small><input name="definition_version" type="number" min="1" defaultValue={selectedDefinition?.current_version.version??""} /></label>
         <label>شروع<input name="start" type="date" required defaultValue="2025-01-01" /></label>
