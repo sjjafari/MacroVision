@@ -641,7 +641,7 @@ try {
   }
 
   console.log(
-    "Production smoke passed: connected dashboards, nine routes, safe proxying, chart gaps, and exact Decimal.",
+    "Production smoke passed: connected dashboards, indicators, comparison, nine routes, safe proxying, chart gaps, and exact Decimal.",
   );
 } finally {
   nextProcess.kill();
