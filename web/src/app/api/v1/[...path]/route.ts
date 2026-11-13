@@ -1,6 +1,6 @@
 import { getBackendUrl } from "@/lib/api/backend-url";
 import { rewriteUpstreamRedirect } from "@/lib/api/redirect";
-import { authorizeTrustedHeaders, securityMode } from "@/lib/security/request-auth";
+import { authorizeMutationHeaders, authorizeTrustedHeaders, securityMode } from "@/lib/security/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,7 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
   try {
     if (securityMode() === "production") {
       const required = request.method === "GET" || request.method === "HEAD" ? "reader" : "research";
-      if (!authorizeTrustedHeaders(request.headers, required)) {
+      const identity = required === "research" ? authorizeMutationHeaders(request.headers, required) : authorizeTrustedHeaders(request.headers, required);\n      if (!identity) {
         return Response.json({ error: { code: "authentication_required", message: "Authentication required." } }, { status: 401, headers: { "cache-control": "no-store" } });
       }
     }
