@@ -233,3 +233,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+deploy/certs/
+deploy/.env.production
+*.pem
