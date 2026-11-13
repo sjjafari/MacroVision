@@ -1,0 +1,1 @@
+export default function Loading() { return <div className="page-stack" role="status" aria-live="polite"><p className="eyebrow">در حال دریافت کاتالوگ</p>{[1,2,3].map(i=><div className="skeleton-card" key={i}><span className="skeleton-line skeleton-line-short"/><span className="skeleton-line"/><span className="skeleton-line skeleton-line-medium"/></div>)}</div>; }

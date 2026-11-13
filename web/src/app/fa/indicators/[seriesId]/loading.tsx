@@ -1,0 +1,1 @@
+export default function Loading() { return <div className="page-stack" role="status"><div className="skeleton-card"><span className="skeleton-line skeleton-line-short"/><span className="skeleton-line"/><span className="skeleton-line skeleton-line-medium"/></div><div className="chart-placeholder"><p>در حال دریافت تاریخچهٔ شاخص…</p></div></div>; }

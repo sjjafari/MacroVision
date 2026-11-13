@@ -10,6 +10,10 @@ const privateFields = [
   "parameters_fingerprint",
 ];
 
+// Git may materialize tracked text as CRLF on Windows while generators emit LF.
+// Drift is semantic text drift, not a platform-specific line-ending difference.
+const normalizeLineEndings = (value) => value.replaceAll("\r\n", "\n");
+
 function run(command, args) {
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
@@ -53,10 +57,10 @@ try {
       readFile(schema, "utf8"),
     ]);
 
-  if (expectedSnapshot !== generatedSnapshot) {
+  if (normalizeLineEndings(expectedSnapshot) !== generatedSnapshot) {
     throw new Error("OpenAPI snapshot drift detected; regenerate the snapshot.");
   }
-  if (expectedSchema !== generatedSchema) {
+  if (normalizeLineEndings(expectedSchema) !== generatedSchema) {
     throw new Error("Generated TypeScript API schema drift detected.");
   }
   const leaked = privateFields.filter((field) => expectedSnapshot.includes(field));
