@@ -14,7 +14,7 @@ def _source(client: TestClient) -> dict[str, Any]:
     return cast(dict[str, Any], response.json())
 
 
-def _series(client: TestClient, source_id: int, code: str, frequency: str = "monthly") -> dict[str, Any]:
+def _series(\n    client: TestClient, source_id: int, code: str, frequency: str = "monthly"\n) -> dict[str, Any]:
     response = client.post(
         "/api/v1/data-series",
         json={
@@ -50,7 +50,7 @@ def _observation(client: TestClient, series_id: int, observed_at: str, value: st
 
 
 def test_selection_parser_is_bounded_and_unique() -> None:
-    assert [(item.kind.value, item.resource_id) for item in parse_selections("raw:1,derived:2")] == [
+    assert [\n        (item.kind.value, item.resource_id) for item in parse_selections("raw:1,derived:2")\n    ] == [
         ("raw", 1),
         ("derived", 2),
     ]
@@ -63,7 +63,7 @@ def test_selection_parser_is_bounded_and_unique() -> None:
             raise AssertionError(f"selection should fail: {invalid}")
 
 
-def test_raw_comparison_preserves_exact_values_and_independent_frequencies(client: TestClient) -> None:
+def test_raw_comparison_preserves_exact_values_and_independent_frequencies(\n    client: TestClient,\n) -> None:
     source = _source(client)
     monthly = _series(client, source["id"], "CMP.MONTHLY", "monthly")
     daily = _series(client, source["id"], "CMP.DAILY", "daily")
@@ -85,7 +85,7 @@ def test_raw_comparison_preserves_exact_values_and_independent_frequencies(clien
     assert "frequency_mismatch" in payload["warnings"]
     assert payload["series"][0]["points"][0]["value"] == "100.12000000"
     assert payload["series"][1]["points"][0]["value"] == "9.87654321"
-    assert payload["series"][0]["points"][0]["observed_at"] != payload["series"][1]["points"][0]["observed_at"]
+    assert (\n        payload["series"][0]["points"][0]["observed_at"]\n        != payload["series"][1]["points"][0]["observed_at"]\n    )
 
 
 def test_comparison_rejects_bad_range_and_missing_resource(client: TestClient) -> None:
