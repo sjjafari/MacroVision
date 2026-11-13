@@ -1,5 +1,7 @@
 # MacroVision
 
+Web MVP Phase 4 adds a private, read-only multi-series comparison contract and Persian comparison workspace. It accepts at most four raw or persisted-derived selections, preserves independent timelines and exact Decimal strings, exposes frequency/axis warnings, supports historical as-of reads, and performs no implicit alignment, resampling, filling, provider synchronization, or Analytics execution. Public deployment remains prohibited until Stage B security gates are complete.
+
 > MacroVision v0.7.0 provides the public, vintage-aware Macro Analytics API. Release
 > artifacts are produced only from reviewed commits merged into `main`.
 
