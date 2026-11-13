@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import type { components } from "@/lib/api/generated/schema";
 import { createResearchMutationClient } from "./mutation-client";
-import { requireRole } from "@/lib/security/request-auth";
+import { requireMutationRole } from "@/lib/security/request-auth";
 
 type Transformation = components["schemas"]["TransformationType"];
 type CreatePayload = components["schemas"]["DerivedSeriesCreate"];
@@ -17,7 +17,7 @@ function day(value:string|null,end=false){if(!value||!/^\d{4}-\d{2}-\d{2}$/.test
 function fail(message:string): never {redirect(`/fa/research?error=${encodeURIComponent(message)}`);}
 
 export async function createDefinitionAction(form:FormData) {
-  await requireRole("research");
+  await requireMutationRole("research");
   const code=text(form,"code",120),title=text(form,"title",240),transformation=text(form,"transformation",80) as Transformation|null;
   const first=positive(form,"source_1"),second=positive(form,"source_2");
   if(!code||!title||!transformation||(!unary.has(transformation)&&!binaryAliases[transformation])||!first) fail("ورودی تعریف تحلیلی معتبر نیست.");
@@ -43,7 +43,7 @@ export async function createDefinitionAction(form:FormData) {
 }
 
 export async function executeResearchAction(form:FormData) {
-  await requireRole("research");
+  await requireMutationRole("research");
   const definitionId=positive(form,"definition_id"),version=positive(form,"definition_version");
   const start=day(text(form,"start",10)),end=day(text(form,"end",10),true),asOfRaw=text(form,"as_of",10),asOf=asOfRaw?day(asOfRaw,true):null;
   if(!definitionId||!start||!end||start>end||(asOfRaw&&!asOf)) fail("بازهٔ اجرای پژوهش معتبر نیست.");
