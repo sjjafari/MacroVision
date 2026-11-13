@@ -13,7 +13,7 @@ const binaryAliases: Record<string,[string,string]> = { ratio:["numerator","deno
 function text(form: FormData,key:string,max:number){const value=String(form.get(key)??"").trim();return value&&value.length<=max?value:null;}
 function positive(form:FormData,key:string){const raw=text(form,key,20);if(!raw||!/^\d+$/.test(raw))return null;const n=Number(raw);return Number.isSafeInteger(n)&&n>0?n:null;}
 function day(value:string|null,end=false){if(!value||!/^\d{4}-\d{2}-\d{2}$/.test(value))return null;const d=new Date(`${value}T${end?"23:59:59.999":"00:00:00.000"}Z`);return Number.isFinite(d.getTime())&&d.toISOString().startsWith(value)?d.toISOString():null;}
-function fail(message:string){redirect(`/fa/research?error=${encodeURIComponent(message)}`);}
+function fail(message:string): never {redirect(`/fa/research?error=${encodeURIComponent(message)}`);}
 
 export async function createDefinitionAction(form:FormData) {
   const code=text(form,"code",120),title=text(form,"title",240),transformation=text(form,"transformation",80) as Transformation|null;
