@@ -412,7 +412,6 @@
       "CashBalanceRead": {
         "properties": {
           "balance": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Balance",
             "type": "string"
           },
@@ -438,7 +437,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
                 "type": "string"
               }
             ],
@@ -462,6 +460,226 @@
         ],
         "title": "CloseDecision",
         "type": "object"
+      },
+      "ComparisonKind": {
+        "enum": [
+          "raw",
+          "derived"
+        ],
+        "title": "ComparisonKind",
+        "type": "string"
+      },
+      "ComparisonPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "missing_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Reason"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComparisonPointStatus"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "observed_at",
+          "value",
+          "status"
+        ],
+        "title": "ComparisonPoint",
+        "type": "object"
+      },
+      "ComparisonPointStatus": {
+        "enum": [
+          "present",
+          "missing"
+        ],
+        "title": "ComparisonPointStatus",
+        "type": "string"
+      },
+      "ComparisonRead": {
+        "additionalProperties": false,
+        "properties": {
+          "axis_count": {
+            "title": "Axis Count",
+            "type": "integer"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "frequency_mismatch": {
+            "title": "Frequency Mismatch",
+            "type": "boolean"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "requested_as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested As Of"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonSeries"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonWarningCode"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "requested_as_of",
+          "start",
+          "end",
+          "frequency_mismatch",
+          "axis_count",
+          "warnings",
+          "series"
+        ],
+        "title": "ComparisonRead",
+        "type": "object"
+      },
+      "ComparisonSeries": {
+        "additionalProperties": false,
+        "properties": {
+          "axis_id": {
+            "title": "Axis Id",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "definition_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Version"
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/DataFrequency"
+          },
+          "geography": {
+            "title": "Geography",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ComparisonKind"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "resource_id",
+          "code",
+          "title",
+          "frequency",
+          "unit",
+          "geography",
+          "currency",
+          "axis_id",
+          "points"
+        ],
+        "title": "ComparisonSeries",
+        "type": "object"
+      },
+      "ComparisonWarningCode": {
+        "enum": [
+          "frequency_mismatch",
+          "multiple_axes"
+        ],
+        "title": "ComparisonWarningCode",
+        "type": "string"
       },
       "CriticReviewCreate": {
         "properties": {
@@ -1813,7 +2031,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -1830,7 +2047,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -1852,7 +2068,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -1995,7 +2210,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -2012,7 +2226,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -2041,7 +2254,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -2493,7 +2705,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
                 "type": "string"
               }
             ],
@@ -2512,7 +2723,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
                 "type": "string"
               }
             ],
@@ -3625,7 +3835,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
                 "type": "string"
               }
             ],
@@ -3639,7 +3848,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
                 "type": "string"
               }
             ],
@@ -4053,7 +4261,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -4890,7 +5097,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -5010,7 +5216,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -5058,7 +5263,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -5480,7 +5684,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -5596,20 +5799,17 @@
         "properties": {
           "allocations": {
             "additionalProperties": {
-              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "type": "string"
             },
             "title": "Allocations",
             "type": "object"
           },
           "base_cash_balance": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Base Cash Balance",
             "type": "string"
           },
           "cash_balances": {
             "additionalProperties": {
-              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "type": "string"
             },
             "title": "Cash Balances",
@@ -5620,22 +5820,18 @@
             "type": "integer"
           },
           "position_value": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Position Value",
             "type": "string"
           },
           "realized_pl": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Realized Pl",
             "type": "string"
           },
           "total_cost_basis": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Cost Basis",
             "type": "string"
           },
           "total_value": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Value",
             "type": "string"
           },
@@ -5647,7 +5843,6 @@
             "type": "array"
           },
           "unrealized_pl": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Unrealized Pl",
             "type": "string"
           },
@@ -5682,7 +5877,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               }
             ],
@@ -5698,7 +5892,6 @@
       "PositionRead": {
         "properties": {
           "allocation_percentage": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Allocation Percentage",
             "type": "string"
           },
@@ -5707,17 +5900,14 @@
             "type": "string"
           },
           "average_cost": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Average Cost",
             "type": "string"
           },
           "cost_basis": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Cost Basis",
             "type": "string"
           },
           "current_price": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Current Price",
             "type": "string"
           },
@@ -5726,17 +5916,14 @@
             "type": "integer"
           },
           "market_value": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Market Value",
             "type": "string"
           },
           "quantity": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Quantity",
             "type": "string"
           },
           "realized_pl": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Realized Pl",
             "type": "string"
           },
@@ -5745,7 +5932,6 @@
             "type": "string"
           },
           "unrealized_pl": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Unrealized Pl",
             "type": "string"
           }
@@ -6561,7 +6747,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -6814,7 +6999,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
                 "type": "string"
               }
             ],
@@ -6828,7 +7012,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
                 "type": "string"
               }
             ],
@@ -6871,7 +7054,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -6886,7 +7068,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -6900,7 +7081,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -6952,7 +7132,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -6966,7 +7145,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -7235,14 +7413,12 @@
         "properties": {
           "allocations": {
             "additionalProperties": {
-              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "type": "string"
             },
             "title": "Allocations",
             "type": "object"
           },
           "base_cash_balance": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Base Cash Balance",
             "type": "string"
           },
@@ -7253,7 +7429,6 @@
           },
           "cash_balances": {
             "additionalProperties": {
-              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "type": "string"
             },
             "title": "Cash Balances",
@@ -7273,27 +7448,22 @@
             "type": "integer"
           },
           "position_value": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Position Value",
             "type": "string"
           },
           "realized_pl": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Realized Pl",
             "type": "string"
           },
           "total_cost_basis": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Cost Basis",
             "type": "string"
           },
           "total_value": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Value",
             "type": "string"
           },
           "unrealized_pl": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Unrealized Pl",
             "type": "string"
           }
@@ -7351,7 +7521,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -7405,7 +7574,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,10}0*$",
                 "type": "string"
               },
               {
@@ -7438,7 +7606,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,8}0*$",
                 "type": "string"
               },
               {
@@ -7457,7 +7624,6 @@
       "TransactionRead": {
         "properties": {
           "amount": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount",
             "type": "string"
           },
@@ -7501,7 +7667,6 @@
           "quantity": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -7511,7 +7676,6 @@
             "title": "Quantity"
           },
           "realized_pl": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Realized Pl",
             "type": "string"
           },
@@ -7532,7 +7696,6 @@
           "unit_price": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -8029,6 +8192,107 @@
         "summary": "Get Observation Lineage",
         "tags": [
           "macro-analytics"
+        ]
+      }
+    },
+    "/api/v1/comparison": {
+      "get": {
+        "operationId": "comparison_api_v1_comparison_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "items",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 5,
+              "title": "Items",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Domain or concurrency conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "summary": "Comparison",
+        "tags": [
+          "comparison"
         ]
       }
     },

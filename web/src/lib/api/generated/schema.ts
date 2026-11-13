@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Comparison */
+        get: operations["comparison_api_v1_comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboards": {
         parameters: {
             query?: never;
@@ -1355,6 +1372,84 @@ export interface components {
             /** Outcome */
             outcome: string;
         };
+        /**
+         * ComparisonKind
+         * @enum {string}
+         */
+        ComparisonKind: "raw" | "derived";
+        /** ComparisonPoint */
+        ComparisonPoint: {
+            /** Missing Reason */
+            missing_reason?: string | null;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            status: components["schemas"]["ComparisonPointStatus"];
+            /** Value */
+            value: string | null;
+        };
+        /**
+         * ComparisonPointStatus
+         * @enum {string}
+         */
+        ComparisonPointStatus: "present" | "missing";
+        /** ComparisonRead */
+        ComparisonRead: {
+            /** Axis Count */
+            axis_count: number;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Frequency Mismatch */
+            frequency_mismatch: boolean;
+            /** Mode */
+            mode: string;
+            /** Requested As Of */
+            requested_as_of: string | null;
+            /** Series */
+            series: components["schemas"]["ComparisonSeries"][];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Warnings */
+            warnings: components["schemas"]["ComparisonWarningCode"][];
+        };
+        /** ComparisonSeries */
+        ComparisonSeries: {
+            /** Axis Id */
+            axis_id: string;
+            /** Code */
+            code: string;
+            /** Currency */
+            currency: string | null;
+            /** Definition Version */
+            definition_version?: number | null;
+            frequency: components["schemas"]["DataFrequency"];
+            /** Geography */
+            geography: string;
+            kind: components["schemas"]["ComparisonKind"];
+            /** Points */
+            points: components["schemas"]["ComparisonPoint"][];
+            /** Resource Id */
+            resource_id: number;
+            /** Run Id */
+            run_id?: number | null;
+            /** Title */
+            title: string;
+            /** Unit */
+            unit: string;
+        };
+        /**
+         * ComparisonWarningCode
+         * @enum {string}
+         */
+        ComparisonWarningCode: "frequency_mismatch" | "multiple_axes";
         /** CriticReviewCreate */
         CriticReviewCreate: {
             /** Analysis */
@@ -3791,6 +3886,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DerivedObservationLineagePage"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    comparison_api_v1_comparison_get: {
+        parameters: {
+            query: {
+                items: string;
+                start: string;
+                end: string;
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonRead"];
                 };
             };
             /** @description Resource not found */
