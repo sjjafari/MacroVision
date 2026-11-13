@@ -1,0 +1,12 @@
+import Link from "next/link";
+import { createContentTransport } from "@/lib/content/server-transport";
+
+export default async function MagazinePage({searchParams=Promise.resolve({})}:{searchParams?:Promise<Record<string,string|string[]|undefined>>}){
+  const params=await searchParams; const raw=Array.isArray(params.subscription)?params.subscription[0]:params.subscription;
+  let page=null; try{page=(await createContentTransport().list()).data;}catch{}
+  return <div className="page-stack magazine-page">
+    <header className="indicator-hero"><div><p className="eyebrow">مجله MacroVision</p><h1>تحلیل، آموزش و روایت داده‌محور بازار</h1><p>محتوای فارسی تحریریه از داده و روش‌شناسی جدا اما به شواهد قابل ردیابی متصل می‌ماند؛ بدون سیگنال خرید و فروش.</p></div><span className="preview-badge">Editorial</span></header>
+    <section className="newsletter-card"><div><h2>خبرنامهٔ پژوهشی</h2><p>انتشار یادداشت‌های تحلیلی و آموزشی. ثبت‌نام به معنی رضایت صریح برای دریافت خبرنامه است.</p></div><form action="/api/web/subscriptions" method="post"><label>ایمیل<input name="email" type="email" required maxLength={320} autoComplete="email" /></label><label className="honeypot" aria-hidden="true">وب‌سایت<input name="website" tabIndex={-1} autoComplete="off" /></label><button type="submit">عضویت</button></form>{raw==="success"&&<p className="form-success" role="status">عضویت ثبت شد.</p>}{raw==="invalid"&&<p className="form-error" role="alert">ایمیل معتبر وارد کنید.</p>}{raw==="unavailable"&&<p className="form-error" role="alert">سرویس عضویت موقتاً در دسترس نیست.</p>}</section>
+    {!page?<section className="state-card state-card-error"><span className="state-symbol">!</span><div><h2>مجله موقتاً در دسترس نیست</h2><p>دادهٔ تحریریه بارگذاری نشد.</p></div></section>:page.items.length===0?<section className="state-card"><span className="state-symbol">۰</span><div><h2>هنوز مطلبی منتشر نشده است</h2><p>فقط مقاله‌هایی که تحریریه صریحاً منتشر کرده باشد در این صفحه ظاهر می‌شوند.</p></div></section>:<section className="magazine-grid" aria-label="مطالب منتشرشده">{page.items.map(article=><article key={article.slug}><p className="eyebrow">{article.category}</p><h2><Link href={`/fa/magazine/${article.slug}`}>{article.title_fa}</Link></h2><p>{article.dek_fa}</p><footer><span>{article.author_display_name}</span><time dateTime={article.published_at}>{new Intl.DateTimeFormat("fa-IR",{dateStyle:"medium"}).format(new Date(article.published_at))}</time></footer></article>)}</section>}
+  </div>;
+}
