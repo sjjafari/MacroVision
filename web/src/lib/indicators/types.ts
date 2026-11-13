@@ -1,8 +1,8 @@
 import type { components } from "@/lib/api/generated/schema";
 
-export type IndicatorCatalogItem = components["schemas"]["IndicatorCatalogItem"];
-export type IndicatorCatalogPage = components["schemas"]["IndicatorCatalogPage"];
-export type IndicatorDetail = components["schemas"]["IndicatorDetail"];
+export type IndicatorCatalogItem = components["schemas"]["IndicatorCatalogItem"] | components["schemas"]["PublicIndicatorCatalogItem"];
+export type IndicatorCatalogPage = components["schemas"]["IndicatorCatalogPage"] | components["schemas"]["PublicIndicatorCatalogPage"];
+export type IndicatorDetail = components["schemas"]["IndicatorDetail"] | components["schemas"]["PublicIndicatorDetail"];
 export type IndicatorSnapshot = components["schemas"]["IndicatorSnapshot"];
 export type RelatedDerivedRead = components["schemas"]["RelatedDerivedRead"];
 export type ObservationRead = components["schemas"]["ObservationRead"];
