@@ -17,7 +17,7 @@ function day(value:string|null,end=false){if(!value||!/^\d{4}-\d{2}-\d{2}$/.test
 function fail(message:string): never {redirect(`/fa/research?error=${encodeURIComponent(message)}`);}
 
 export async function createDefinitionAction(form:FormData) {
-  await requireMutationRole("research");
+  const actor=await requireMutationRole("research");
   const code=text(form,"code",120),title=text(form,"title",240),transformation=text(form,"transformation",80) as Transformation|null;
   const first=positive(form,"source_1"),second=positive(form,"source_2");
   if(!code||!title||!transformation||(!unary.has(transformation)&&!binaryAliases[transformation])||!first) fail("ورودی تعریف تحلیلی معتبر نیست.");
