@@ -1,5 +1,6 @@
 limit_req_zone $binary_remote_addr zone=mv_public:10m rate=10r/s;
 limit_req_zone $binary_remote_addr zone=mv_api:10m rate=3r/s;
+limit_req_zone $binary_remote_addr zone=mv_subscribe:10m rate=2r/m;
 
 upstream macrovision_web { server web:3000; }
 upstream macrovision_oauth { server oauth2-proxy:4180; }
