@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from macrovision import (  # noqa: F401
     analytics_models,
+    content_models,
     decision_models,
     macro_data_models,
     models,
