@@ -9,7 +9,7 @@ const transformations=[
 export function ResearchWorkspace({series,definitions,selectedDefinition,run,observations,lineage,error,csrfToken}:{series:DataSeriesRead[];definitions:DerivedSeriesPage;selectedDefinition:DerivedSeriesRead|null;run:AnalyticsRunRead|null;observations:DerivedObservationPage|null;lineage:DerivedObservationLineagePage|null;error?:string;csrfToken?:string}) {
   return <div className="page-stack research-workspace">
     <header className="indicator-hero"><div><p className="eyebrow">آزمایشگاه پژوهش خصوصی</p><h1>Analytics مستند و قابل بازتولید</h1><p>تعریف تبدیل، اجرای محدود، خروجی دقیق و Lineage نقطه‌ای؛ بدون فرمول دلخواه و بدون اجرای پنهانی.</p></div><span className="preview-badge">Private / Mutation</span></header>
-    <div className="private-warning" role="alert"><strong>فقط شبکهٔ مورد اعتماد</strong><p>این سطح Mutation تا تکمیل Authentication، RBAC، Session، CSRF و Rate Limit نباید عمومی شود.</p></div>
+    <div className="private-warning" role="status"><strong>سطح پژوهش کنترل‌شده</strong><p>در حالت Public، Mutation فقط با Session معتبر، نقش Operator، CSRF و Rate Limit اجرا می‌شود.</p>{csrfToken&&csrfToken!=="private-network"&&<form action="/api/web/session" method="post"><input type="hidden" name="action" value="logout" /><input type="hidden" name="csrf" value={csrfToken} /><button type="submit">خروج از نشست</button></form>}</div>
     {error&&<section className="state-card state-card-error" role="alert"><span className="state-symbol">!</span><div><h2>عملیات انجام نشد</h2><p>{error}</p></div></section>}
     <section className="research-columns">
       <form action={createDefinitionAction} className="research-form"><input type="hidden" name="csrf" value={csrfToken??""} /><h2>۱. تعریف تحلیل</h2>
