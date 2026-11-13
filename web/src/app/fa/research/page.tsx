@@ -1,23 +1,10 @@
-import { RoutePlaceholder } from "@/components/route-placeholder";
+import { ResearchWorkspace } from "@/components/research/research-workspace";
+import { loadResearch } from "@/lib/research/loader";
 
-export default function ResearchPage() {
-  return (
-    <div className="private-route">
-      <div className="private-warning" role="alert">
-        <strong>فضای خصوصی و غیرفعال</strong>
-        <p>
-          احراز هویت هنوز وجود ندارد؛ اجرای تحلیل و هرگونه عملیات تغییردهنده در این
-          پیش‌نمایش مسدود است.
-        </p>
-      </div>
-      <RoutePlaceholder
-        eyebrow="فضای پژوهش"
-        title="آزمایشگاه تحلیل مستند"
-        description="اجرای تبدیل‌های تحلیلی، مشاهده خروجی و تبار داده تنها پس از تکمیل مرزهای امنیتی در محیط خصوصی ارائه می‌شود."
-        phase={5}
-        privateOnly
-        notice="اجرای پژوهش در فاز نخست مجاز نیست"
-      />
-    </div>
-  );
+export default async function ResearchPage({searchParams=Promise.resolve({})}:{searchParams?:Promise<Record<string,string|string[]|undefined>>}) {
+  const params=await searchParams;
+  const result=await loadResearch(params);
+  if(result.status==="error") return <section className="state-card state-card-error" role="alert"><span className="state-symbol">!</span><div><h1>فضای پژوهش در دسترس نیست</h1><p>جزئیات خطای خصوصی نمایش داده نمی‌شود.</p></div></section>;
+  const rawError=Array.isArray(params.error)?params.error[0]:params.error;
+  return <ResearchWorkspace series={result.series} definitions={result.definitions} selectedDefinition={result.selectedDefinition} run={result.run} observations={result.observations} lineage={result.lineage} error={rawError?.slice(0,200)} />;
 }
