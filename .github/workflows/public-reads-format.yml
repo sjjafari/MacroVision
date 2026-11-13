@@ -1,0 +1,30 @@
+name: Temporary Python formatter
+
+on:
+  push:
+    branches:
+      - feat/public-indicator-reads-v0.8
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/public-indicator-reads-v0.8
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "ruff>=0.6,<1"
+      - run: ruff format src/macrovision/public_indicator_api.py src/macrovision/public_indicator_schemas.py src/macrovision/public_indicator_services.py src/macrovision/publication_catalog.py tests/test_public_indicator_api.py
+      - run: ruff check --fix src/macrovision/public_indicator_api.py src/macrovision/public_indicator_schemas.py src/macrovision/public_indicator_services.py src/macrovision/publication_catalog.py tests/test_public_indicator_api.py
+      - run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/macrovision/public_indicator_api.py src/macrovision/public_indicator_schemas.py src/macrovision/public_indicator_services.py src/macrovision/publication_catalog.py tests/test_public_indicator_api.py
+          git commit -m "style: format public indicator reads"
+          git push origin HEAD:feat/public-indicator-reads-v0.8
