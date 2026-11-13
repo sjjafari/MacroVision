@@ -62,7 +62,10 @@ export async function loadIndicatorDetail(seriesId: string, date: string | undef
   try {
     const detailResult = await transport.detail(id);
     if (detailResult.status === 404) return { status: "not_found" };
-    if (!detailResult.data || detailResult.data.curation.curation_status !== "reviewed_private") return { status: "unavailable" };
+    if (!detailResult.data) return { status: "unavailable" };
+    const curation=detailResult.data.curation;
+    const eligible=curation.public_eligibility || ("curation_status" in curation && curation.curation_status==="reviewed_private");
+    if(!eligible) return { status: "unavailable" };
     const asOf = date ? historicalCutoff(date) : null;
     if (date && !asOf) return { status: "invalid" };
     const snapshotResult = await transport.snapshot(id, asOf ?? undefined);
