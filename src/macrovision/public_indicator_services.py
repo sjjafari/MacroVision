@@ -50,7 +50,9 @@ def public_catalog(
     )
     eligible = [item for item in private.items if is_public_indicator(item.series_code)]
     items = [
-        PublicIndicatorCatalogItem(**item.model_dump(), private_preview=False, public_eligibility=True)
+        PublicIndicatorCatalogItem(
+            **item.model_dump(), private_preview=False, public_eligibility=True
+        )
         for item in eligible[offset : offset + limit]
     ]
     return PublicIndicatorCatalogPage(limit=limit, offset=offset, total=len(eligible), items=items)
