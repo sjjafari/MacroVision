@@ -9,6 +9,7 @@ from macrovision import analytics_models as analytics_models
 from macrovision.analytics_api import router as analytics_router
 from macrovision.api import router, system_router
 from macrovision.comparison_api import router as comparison_router
+from macrovision.content_api import router as content_router
 from macrovision.contracts import ErrorResponse
 from macrovision.dashboard_api import router as dashboard_router
 from macrovision.decision_api import router as decision_router
@@ -64,3 +65,4 @@ app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(indicator_router, prefix="/api/v1")
 app.include_router(public_indicator_router, prefix="/api/v1")
 app.include_router(comparison_router, prefix="/api/v1")
+app.include_router(content_router, prefix="/api/v1")
