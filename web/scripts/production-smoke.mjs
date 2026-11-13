@@ -257,6 +257,24 @@ const upstream = createServer((request, response) => {
     return;
   }
   const url = new URL(request.url ?? "/", `http://${host}`);
+  if (url.pathname === "/api/v1/derived-series") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ items: [{ id: 31, code: "ANALYTICS.CPI.YOY", title: "تورم سالانه", description: "Persisted YoY", enabled: true, lock_version: 1, current_version: { id: 301, version: 2, transformation_type: "pct_change", created_at: "2026-01-01T00:00:00Z", change_note: null }, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }], limit: 100, offset: 0 }));
+    return;
+  }
+  if (url.pathname === "/api/v1/comparison") {
+    const asOf = url.searchParams.get("as_of");
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({
+      mode: asOf ? "historical_as_of" : "current", requested_as_of: asOf, start: url.searchParams.get("start"), end: url.searchParams.get("end"),
+      frequency_mismatch: true, axis_count: 2, warnings: ["frequency_mismatch","multiple_axes"],
+      series: [
+        { kind:"raw", resource_id:11, code:"FRED.CPIAUCSL", title:"شاخص قیمت مصرف‌کننده آمریکا", frequency:"monthly", unit:"index", geography:"US", currency:null, axis_id:"axis-1", definition_version:null, run_id:null, points:[{observed_at:"2026-06-01T00:00:00Z",value:"321.40000000",status:"present",missing_reason:null}] },
+        { kind:"derived", resource_id:31, code:"ANALYTICS.CPI.YOY", title:"تورم سالانه", frequency:"annual", unit:"percent", geography:"US", currency:null, axis_id:"axis-2", definition_version:2, run_id:41, points:[{observed_at:"2026-06-01T00:00:00Z",value:"3.25000000",status:"present",missing_reason:null}] }
+      ]
+    }));
+    return;
+  }
   if (url.pathname === "/api/v1/indicator-catalog") {
     const searched = url.searchParams.get("search");
     response.writeHead(200, { "content-type": "application/json" });
@@ -522,6 +540,12 @@ try {
       }
     }
   }
+  const compareResponse = await fetch(`${webBase}/fa/compare?items=raw%3A11&items=derived%3A31&start=2026-01-01&end=2026-06-30`);
+  const compareHtml = await compareResponse.text();
+  if (!compareResponse.ok || !compareHtml.includes("321.40000000") || !compareHtml.includes("3.25000000") || !compareHtml.includes("هشدار اختلاف تناوب")) throw new Error("Comparison route did not render exact multi-series evidence.");
+  const compareHistorical = await fetch(`${webBase}/fa/compare?items=raw%3A11&start=2026-01-01&end=2026-06-30&as_of=2026-06-30`);
+  const compareHistoricalHtml = await compareHistorical.text();
+  if (!compareHistorical.ok || !compareHistoricalHtml.includes("نمای تاریخی دانش") || !compareHistoricalHtml.includes("2026-06-30T23:59:59.999Z")) throw new Error("Historical comparison mode was not explicit.");
   if (relatedRequests < 1 || lineageRequests < 1) throw new Error("Current indicator did not exercise related-derived and lineage reads.");
   const currentRelatedRequests = relatedRequests;
   const currentLineageRequests = lineageRequests;
