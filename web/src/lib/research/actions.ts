@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import type { components } from "@/lib/api/generated/schema";
 import { createResearchMutationClient } from "./mutation-client";
+import { requireMutationRole } from "@/lib/security/request-auth";
 
 type Transformation = components["schemas"]["TransformationType"];
 type CreatePayload = components["schemas"]["DerivedSeriesCreate"];
@@ -16,6 +17,7 @@ function day(value:string|null,end=false){if(!value||!/^\d{4}-\d{2}-\d{2}$/.test
 function fail(message:string): never {redirect(`/fa/research?error=${encodeURIComponent(message)}`);}
 
 export async function createDefinitionAction(form:FormData) {
+  const actor=await requireMutationRole("research");
   const code=text(form,"code",120),title=text(form,"title",240),transformation=text(form,"transformation",80) as Transformation|null;
   const first=positive(form,"source_1"),second=positive(form,"source_2");
   if(!code||!title||!transformation||(!unary.has(transformation)&&!binaryAliases[transformation])||!first) fail("ورودی تعریف تحلیلی معتبر نیست.");
@@ -37,15 +39,18 @@ export async function createDefinitionAction(form:FormData) {
   const client=createResearchMutationClient();
   const result=await client.POST("/api/v1/derived-series",{body:payload});
   if(!result.data) fail("تعریف تحلیلی ایجاد نشد.");
+  console.info(JSON.stringify({event:"research_definition_created",actor:actor.user,role:actor.role,definition_id:result.data.id}));
   redirect(`/fa/research?definition_id=${result.data.id}`);
 }
 
 export async function executeResearchAction(form:FormData) {
+  const actor=await requireMutationRole("research");
   const definitionId=positive(form,"definition_id"),version=positive(form,"definition_version");
   const start=day(text(form,"start",10)),end=day(text(form,"end",10),true),asOfRaw=text(form,"as_of",10),asOf=asOfRaw?day(asOfRaw,true):null;
   if(!definitionId||!start||!end||start>end||(asOfRaw&&!asOf)) fail("بازهٔ اجرای پژوهش معتبر نیست.");
   const client=createResearchMutationClient();
   const result=await client.POST("/api/v1/derived-series/{definition_id}/runs",{params:{path:{definition_id:definitionId}},body:{definition_version:version??undefined,requested_start_at:start,requested_end_at:end,as_of:asOf??undefined,retry_of_run_id:undefined}});
   if(!result.data) fail("اجرای Analytics انجام نشد.");
+  console.info(JSON.stringify({event:"research_run_created",actor:actor.user,role:actor.role,definition_id:definitionId,run_id:result.data.run.id}));
   redirect(`/fa/research?definition_id=${definitionId}&run_id=${result.data.run.id}`);
 }

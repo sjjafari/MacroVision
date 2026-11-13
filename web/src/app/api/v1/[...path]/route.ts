@@ -1,5 +1,6 @@
 import { getBackendUrl } from "@/lib/api/backend-url";
 import { rewriteUpstreamRedirect } from "@/lib/api/redirect";
+import { authorizeMutationHeaders, authorizeTrustedHeaders, securityMode } from "@/lib/security/request-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,16 @@ function safeResponseHeaders(upstream: Response): Headers {
 }
 
 async function proxy(request: Request, context: RouteContext): Promise<Response> {
+  let mutationActor: {user:string;role:string}|null=null;
   try {
+    if (securityMode() === "production") {
+      const required = request.method === "GET" || request.method === "HEAD" ? "reader" : "research";
+      const identity = required === "research" ? authorizeMutationHeaders(request.headers, required) : authorizeTrustedHeaders(request.headers, required);
+      if (!identity) {
+        return Response.json({ error: { code: "authentication_required", message: "Authentication required." } }, { status: 401, headers: { "cache-control": "no-store" } });
+      }
+      if(required==="research") mutationActor=identity;
+    }
     const backend = getBackendUrl();
     const backendBase = new URL(backend);
     const { path } = await context.params;
@@ -87,6 +97,7 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
       headers.set("location", safeLocation);
     }
 
+    if(mutationActor) console.info(JSON.stringify({event:"api_mutation",actor:mutationActor.user,role:mutationActor.role,method:request.method,path:requestUrl.pathname,status:upstream.status}));
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,

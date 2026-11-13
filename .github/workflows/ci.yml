@@ -32,6 +32,16 @@ jobs:
       - run: ruff check .
       - run: mypy
       - run: pytest
+      - name: Validate production compose
+        env:
+          MACROVISION_HOST: macrovision.example.test
+          MACROVISION_DB_PASSWORD: ci-db-password
+          MACROVISION_TRUSTED_PROXY_SECRET: 01234567890123456789012345678901
+          MACROVISION_OPERATOR_USERS: sjjafari
+          GITHUB_OAUTH_CLIENT_ID: ci-client
+          GITHUB_OAUTH_CLIENT_SECRET: ci-secret
+          OAUTH2_PROXY_COOKIE_SECRET: 01234567890123456789012345678901
+        run: docker compose -f docker-compose.production.yml config -q
       - name: Build package and smoke-test installed wheel on SQLite
         run: |
           python -m build

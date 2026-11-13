@@ -1,0 +1,84 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: macrovision
+      POSTGRES_USER: macrovision
+      POSTGRES_PASSWORD: ${MACROVISION_DB_PASSWORD}
+    volumes:
+      - macrovision_pg:/var/lib/postgresql/data
+    networks: [private]
+
+  backend:
+    build: .
+    restart: unless-stopped
+    environment:
+      MACROVISION_DATABASE_URL: postgresql+psycopg://macrovision:${MACROVISION_DB_PASSWORD}@db:5432/macrovision
+    depends_on: [db]
+    expose: ["8000"]
+    networks: [private]
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    environment:
+      MACROVISION_BACKEND_URL: http://backend:8000
+      MACROVISION_SECURITY_MODE: production
+      MACROVISION_TRUSTED_PROXY_SECRET: ${MACROVISION_TRUSTED_PROXY_SECRET}
+      MACROVISION_OPERATOR_USERS: ${MACROVISION_OPERATOR_USERS}
+      MACROVISION_RESEARCH_USERS: ${MACROVISION_RESEARCH_USERS:-}
+      MACROVISION_READER_USERS: ${MACROVISION_READER_USERS:-}
+    depends_on: [backend]
+    expose: ["3000"]
+    networks: [private]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server","--save","","--appendonly","no"]
+    networks: [private]
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
+    restart: unless-stopped
+    command:
+      - --provider=github
+      - --http-address=0.0.0.0:4180
+      - --reverse-proxy=true
+      - --set-xauthrequest=true
+      - --email-domain=*
+      - --redirect-url=https://${MACROVISION_HOST}/oauth2/callback
+      - --cookie-name=__Host-macrovision
+      - --cookie-secure=true
+      - --cookie-httponly=true
+      - --cookie-samesite=strict
+      - --cookie-csrf-per-request=true
+      - --session-store-type=redis
+      - --redis-connection-url=redis://redis:6379
+      - --client-id=${GITHUB_OAUTH_CLIENT_ID}
+      - --client-secret=${GITHUB_OAUTH_CLIENT_SECRET}
+      - --cookie-secret=${OAUTH2_PROXY_COOKIE_SECRET}
+    depends_on: [redis]
+    expose: ["4180"]
+    networks: [private]
+
+  gateway:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    environment:
+      MACROVISION_HOST: ${MACROVISION_HOST}
+      MACROVISION_TRUSTED_PROXY_SECRET: ${MACROVISION_TRUSTED_PROXY_SECRET}
+    volumes:
+      - ./deploy/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on: [web, oauth2-proxy]
+    ports: ["443:443"]
+    networks: [private]
+
+volumes:
+  macrovision_pg:
+
+networks:
+  private:
+    internal: true
