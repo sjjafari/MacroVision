@@ -82,6 +82,7 @@ def _raw_series(
             offset=0,
         )
     )
+    version = analytics.get_version(session, selection.resource_id, page.definition_version)
     points = [
         ComparisonPoint(
             observed_at=item.observed_at,
@@ -113,9 +114,6 @@ def _derived_series(
     as_of: datetime | None,
 ) -> ComparisonSeries:
     definition = analytics.get_definition_read(session, selection.resource_id)
-    version = analytics.get_version(
-        session, selection.resource_id, definition.current_version.version
-    )
     page = (
         analytics.observations_as_of(
             session,
