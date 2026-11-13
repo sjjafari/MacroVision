@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 
-
 ARTICLE = {
     "slug": "macro-research-note",
     "title_fa": "یادداشت پژوهش کلان",

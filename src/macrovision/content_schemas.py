@@ -1,15 +1,19 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-from typing_extensions import Annotated
 
 
 class ContentModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-Slug = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")]
+Slug = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True, min_length=1, max_length=160, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    ),
+]
 Email = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=320)]
 
 

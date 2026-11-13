@@ -136,7 +136,9 @@ def subscribe(session: Session, email: str) -> SubscriptionReceipt:
     normalized = _normalize_email(email)
     token = secrets.token_urlsafe(32)
     digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    existing = session.scalar(select(NewsletterSubscriber).where(NewsletterSubscriber.email == normalized))
+    existing = session.scalar(
+        select(NewsletterSubscriber).where(NewsletterSubscriber.email == normalized)
+    )
     if existing is None:
         session.add(
             NewsletterSubscriber(
