@@ -1,5 +1,7 @@
 import { getBackendUrl } from "@/lib/api/backend-url";
 import { rewriteUpstreamRedirect } from "@/lib/api/redirect";
+import { clientKey, consumeRateLimit } from "@/lib/security/rate-limit";
+import { currentSession, securityMode } from "@/lib/security/session";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +52,18 @@ function safeResponseHeaders(upstream: Response): Headers {
 
 async function proxy(request: Request, context: RouteContext): Promise<Response> {
   try {
+    const isMutation=!["GET","HEAD","OPTIONS"].includes(request.method);
+    if(securityMode()==="public"){
+      const session=await currentSession();
+      if(!session)return Response.json({error:{code:"authentication_required",message:"Authentication is required."}},{status:401});
+      const rate=consumeRateLimit(`api:${session.sub}:${clientKey(request)}:${isMutation?"write":"read"}`,isMutation?20:120,60_000);
+      if(!rate.allowed)return Response.json({error:{code:"rate_limited",message:"Request rate exceeded."}},{status:429,headers:{"retry-after":String(rate.retryAfter)}});
+      if(isMutation){
+        const origin=request.headers.get("origin");
+        if(!origin||origin!==new URL(request.url).origin)return Response.json({error:{code:"origin_rejected",message:"Mutation origin was rejected."}},{status:403});
+        if(request.headers.get("x-csrf-token")!==session.csrf)return Response.json({error:{code:"csrf_invalid",message:"CSRF validation failed."}},{status:403});
+      }
+    }
     const backend = getBackendUrl();
     const backendBase = new URL(backend);
     const { path } = await context.params;
