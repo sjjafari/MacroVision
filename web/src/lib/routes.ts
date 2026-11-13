@@ -40,6 +40,8 @@ export const WEB_ROUTES = [
     navigation: true,
   },
   { href: "/fa/about", label: "درباره", shortLabel: "درباره", phase: 2, navigation: true },
+  { href: "/fa/magazine", label: "مجله", shortLabel: "مجله", phase: 7, navigation: true },
+  { href: "/fa/magazine/[slug]", label: "مطلب مجله", shortLabel: "مطلب", phase: 7, navigation: false },
 ] as const satisfies readonly WebRoute[];
 
 export const NAVIGATION_ROUTES = WEB_ROUTES.filter((route) => route.navigation);
