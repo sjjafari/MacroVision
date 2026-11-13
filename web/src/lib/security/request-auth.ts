@@ -32,8 +32,28 @@ export function authorizeTrustedHeaders(source:Headers,required:MacroVisionRole)
   if(!role||rank[role]<rank[required]) return null;
   return {user,role};
 }
+export function authorizeMutationHeaders(source:Headers,required:MacroVisionRole) {
+  const identity=authorizeTrustedHeaders(source,required);
+  if(!identity) return null;
+  if(securityMode()!=="production") return identity;
+  const origin=source.get("origin");
+  const host=(source.get("x-forwarded-host")??source.get("host")??"").trim();
+  const proto=(source.get("x-forwarded-proto")??"https").trim();
+  const fetchSite=source.get("sec-fetch-site");
+  if(!origin||!host||(fetchSite&&fetchSite!=="same-origin")) return null;
+  try {
+    const parsed=new URL(origin);
+    if(parsed.host!==host||parsed.protocol!==proto+":") return null;
+  } catch { return null; }
+  return identity;
+}
 export async function requireRole(required:MacroVisionRole) {
   const identity=authorizeTrustedHeaders(new Headers(await headers()),required);
   if(!identity) throw new Error("Unauthorized MacroVision research operation.");
+  return identity;
+}
+export async function requireMutationRole(required:MacroVisionRole) {
+  const identity=authorizeMutationHeaders(new Headers(await headers()),required);
+  if(!identity) throw new Error("Unauthorized or cross-origin MacroVision mutation.");
   return identity;
 }
