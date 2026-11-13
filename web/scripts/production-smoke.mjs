@@ -262,6 +262,16 @@ const upstream = createServer((request, response) => {
     response.end(JSON.stringify([{ id:11, source_id:7, code:"FRED.CPIAUCSL", provider_series_id:"CPIAUCSL", name:"Consumer Price Index", description:"CPI", category:"inflation", geography:"US", frequency:"monthly", unit:"index", currency:null, seasonal_adjustment:"seasonally_adjusted", publication_lag_days:0, is_active:true, metadata:{}, minimum_value:null, maximum_value:null, max_change_percent:null, stale_after_days:30, lock_version:1, created_at:"2026-01-01T00:00:00Z", updated_at:"2026-01-01T00:00:00Z" }]));
     return;
   }
+  if (url.pathname === "/api/v1/public/content/articles") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({limit:20,offset:0,total:1,items:[{slug:"macro-evidence",title_fa:"یادداشت داده‌محور",dek_fa:"نمونهٔ محتوای منتشرشده برای Smoke.",body_fa:"پاراگراف اول.\\n\\nپاراگراف دوم.",category:"macro",author_display_name:"تحریریه MacroVision",published_at:"2026-11-01T00:00:00Z"}]}));
+    return;
+  }
+  if (url.pathname === "/api/v1/public/content/articles/macro-evidence") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({slug:"macro-evidence",title_fa:"یادداشت داده‌محور",dek_fa:"نمونهٔ محتوای منتشرشده برای Smoke.",body_fa:"پاراگراف اول.\\n\\nپاراگراف دوم.",category:"macro",author_display_name:"تحریریه MacroVision",published_at:"2026-11-01T00:00:00Z"}));
+    return;
+  }
   if (url.pathname === "/api/v1/derived-series") {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({ items: [{ id: 31, code: "ANALYTICS.CPI.YOY", title: "تورم سالانه", description: "Persisted YoY", enabled: true, lock_version: 1, current_version: { id: 301, version: 2, transformation_type: "pct_change", created_at: "2026-01-01T00:00:00Z", change_note: null }, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }], limit: 100, offset: 0 }));
@@ -508,6 +518,8 @@ try {
     "/fa/research",
     "/fa/methodology",
     "/fa/about",
+    "/fa/magazine",
+    "/fa/magazine/macro-evidence",
   ];
   for (const route of staticRoutes) {
     const response = await fetch(`${webBase}${route}`);
@@ -545,6 +557,13 @@ try {
       }
     }
   }
+  const magazineResponse=await fetch(`${webBase}/fa/magazine`);
+  const magazineHtml=await magazineResponse.text();
+  if(!magazineResponse.ok||!magazineHtml.includes("یادداشت داده‌محور")||!magazineHtml.includes("/fa/magazine/macro-evidence")) throw new Error("Magazine did not render published editorial content.");
+  const articleResponse=await fetch(`${webBase}/fa/magazine/macro-evidence`);
+  const articleHtml=await articleResponse.text();
+  if(!articleResponse.ok||!articleHtml.includes("پاراگراف اول")||!articleHtml.includes("توصیهٔ خرید یا فروش")) throw new Error("Published article reader contract failed.");
+
   const compareResponse = await fetch(`${webBase}/fa/compare?items=raw%3A11&items=derived%3A31&start=2026-01-01&end=2026-06-30`);
   const compareHtml = await compareResponse.text();
   if (!compareResponse.ok || !compareHtml.includes("321.40000000") || !compareHtml.includes("3.25000000") || !compareHtml.includes("هشدار اختلاف تناوب")) throw new Error("Comparison route did not render exact multi-series evidence.");
@@ -646,7 +665,7 @@ try {
   }
 
   console.log(
-    "Production smoke passed: connected dashboards, indicators, comparison, private research shell, nine routes, safe proxying, chart gaps, and exact Decimal.",
+    "Production smoke passed: connected dashboards, indicators, comparison, private research shell, Phase 7 magazine, eleven routes, safe proxying, chart gaps, and exact Decimal.",
   );
 } finally {
   nextProcess.kill();
