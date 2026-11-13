@@ -257,6 +257,11 @@ const upstream = createServer((request, response) => {
     return;
   }
   const url = new URL(request.url ?? "/", `http://${host}`);
+  if (url.pathname === "/api/v1/data-series") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify([{ id:11, source_id:7, code:"FRED.CPIAUCSL", provider_series_id:"CPIAUCSL", name:"Consumer Price Index", description:"CPI", category:"inflation", geography:"US", frequency:"monthly", unit:"index", currency:null, seasonal_adjustment:"seasonally_adjusted", publication_lag_days:0, is_active:true, metadata:{}, minimum_value:null, maximum_value:null, max_change_percent:null, stale_after_days:30, lock_version:1, created_at:"2026-01-01T00:00:00Z", updated_at:"2026-01-01T00:00:00Z" }]));
+    return;
+  }
   if (url.pathname === "/api/v1/derived-series") {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({ items: [{ id: 31, code: "ANALYTICS.CPI.YOY", title: "تورم سالانه", description: "Persisted YoY", enabled: true, lock_version: 1, current_version: { id: 301, version: 2, transformation_type: "pct_change", created_at: "2026-01-01T00:00:00Z", change_note: null }, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }], limit: 100, offset: 0 }));
@@ -641,7 +646,7 @@ try {
   }
 
   console.log(
-    "Production smoke passed: connected dashboards, indicators, comparison, nine routes, safe proxying, chart gaps, and exact Decimal.",
+    "Production smoke passed: connected dashboards, indicators, comparison, private research shell, nine routes, safe proxying, chart gaps, and exact Decimal.",
   );
 } finally {
   nextProcess.kill();
