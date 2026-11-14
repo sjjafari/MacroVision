@@ -20,11 +20,12 @@ FastAPI or Next.js containers directly.
 
 ## Publication status
 
-Stage B deliberately keeps data-bearing Persian routes authenticated. Only
-`/fa/about` and `/fa/methodology` may be served without application data
-authorization. `reviewed_private` is not publication eligibility. A future
-public reader surface must consume an explicit public-eligibility contract;
-do not bypass this gate by exposing current dashboard or indicator APIs.
+The v0.8.0 gateway keeps dashboards, comparison, research, management reads, and all
+mutations authenticated. The only unauthenticated data-bearing surface is the indicator
+reader: `/fa/indicators`, indicator detail routes, and GET-only
+`/api/v1/public/*`. Those reads are filtered by the independent code-reviewed
+publication allowlist; `reviewed_private` and operational `is_active` never grant
+public eligibility. About and Methodology remain public static routes.
 
 ## Required secrets
 
