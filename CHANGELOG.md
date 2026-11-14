@@ -2,6 +2,38 @@
 
 All notable MacroVision release changes are documented here.
 
+## 0.8.0
+
+MacroVision v0.8.0 delivers the Persian Web MVP on top of the vintage-aware v0.7 Analytics foundation. The release remains an evidence and research platform: it does not generate trading signals, execute broker orders, or perform hidden browser-side financial calculations.
+
+### Persian Web MVP
+
+- Implements all nine approved Persian RTL routes: home, markets, macro, indicator catalog/detail, comparison, research, methodology, and about.
+- Connects home/markets/macro dashboards to bounded persisted read models with exact Decimal evidence, explicit missing/stale/incomparable states, responsive ECharts, and accessible exact-value tables.
+- Adds a reviewed indicator catalog with current and historical as-of snapshots, cutoff-aware revisions, source/methodology metadata, and current-only related Analytics lineage.
+- Adds a bounded multi-series comparison contract for at most four raw/derived series with explicit frequency and axis semantics and no implicit alignment, resampling, filling, or interpolation.
+- Adds a private research workspace for the nine registered versioned Analytics transformations, explicit bounded execution, persisted outputs, missingness, and point lineage.
+- Completes reviewed Persian Methodology and About surfaces.
+
+### Publication and security
+
+- Adds explicit publication eligibility independent from operational state and private curation; non-eligible indicators fail closed.
+- Adds public-safe indicator projections and a GET-only rate-limited public API namespace while keeping dashboards, comparison, research, management reads, and all mutations authenticated.
+- Adds production trusted-ingress RBAC, GitHub OAuth2 Proxy sessions backed by Redis, same-origin mutation checks, audit events, NGINX TLS/auth_request/rate limiting, and internal-only application/database networking.
+- Adds PostgreSQL production topology, backup procedure, isolated restore verification, hardened backend/web containers, deployment secret contract, and CI validation of gateway invariants.
+- Production frontend dependency audit at the high threshold is enforced in CI.
+
+### Data and reproducibility
+
+- Preserves exact Decimal strings for business values and limits JavaScript Number conversion to chart geometry.
+- Historical reads retain no-look-ahead behavior and suppress future revisions/evidence.
+- GET reader routes do not trigger provider synchronization or Analytics execution.
+- Keeps Alembic head at `20260726_0009`; v0.8.0 adds no database migration.
+
+### Release boundary
+
+- The repository is deployment-ready but is not automatically published to the Internet. A real deployment still requires operator-supplied OAuth credentials, TLS certificates, production secrets, authorized-user lists, PostgreSQL backup/restore verification, and deployment smoke in the target environment.
+
 ## 0.7.0
 
 MacroVision v0.7.0 introduces the vintage-aware Macro Analytics Engine while preserving

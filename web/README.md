@@ -1,92 +1,16 @@
 # MacroVision Web
 
-Phase 1 provides the private Persian RTL frontend foundation for MacroVision. Web MVP
-Phase 2B connects `/fa`, `/fa/markets`, and `/fa/macro` to the persisted dashboard
-contracts added in Phase 2A. Phase 3B connects `/fa/indicators` and
-`/fa/indicators/{seriesId}` to the reviewed Phase 3A contracts with URL-backed
-filters, current/as-of snapshots, bounded charts, revision evidence, related
-derived values, and lineage.
+MacroVision Web v0.8.0 is the Persian RTL interface for the vintage-aware MacroVision backend. All nine approved MVP routes are implemented: dashboards, reviewed indicators, indicator detail/as-of evidence, bounded multi-series comparison, private Analytics research, methodology, and about.
 
-The available private backend contracts are:
+Server Components and server actions use the generated OpenAPI client through a server-only backend URL. Exact Decimal strings remain authoritative for labels, tables, tooltips, comparisons, and evidence; JavaScript Number conversion is limited to finite ECharts geometry. Missing values remain gaps and are never mapped to zero.
 
-- `GET /api/v1/dashboards`
-- `GET /api/v1/dashboards/{dashboard_code}`
-- `GET /api/v1/dashboards/{dashboard_code}/summary`
-- filtered `GET /api/v1/data-series`
-- bounded current and as-of observation ranges
-- `GET /api/v1/indicator-catalog`
-- `GET /api/v1/indicator-catalog/{series_id}`
-- `GET /api/v1/indicator-catalog/{series_id}/snapshot`
-- `GET /api/v1/indicator-catalog/{series_id}/related-derived`
+In private-preview mode the indicator workspace uses reviewed-private contracts. In production mode it switches to the public indicator projection, whose backend allowlist is independent from operational `is_active` and private curation. About, Methodology, and publication-eligible indicator pages may be unauthenticated; dashboards, comparison, research, management reads, and mutations remain behind the production trusted-ingress/RBAC boundary.
 
-Indicator catalog `search` and `geography` filters are trimmed, matched
-case-insensitively, and reject whitespace-only values. Detail curation always reports
-the fixed descriptive constants `private_preview=true` and
-`public_eligibility=false`; these are not access control. Related-derived evidence is
-returned only when the selected exact definition version has a persisted input whose
-source-code snapshot matches the reviewed raw indicator. Empty or mismatched inputs
-retain definition identity but redact values and all run/observation evidence. Reads do
-not fall back to older versions, execute Analytics, or contact providers.
+The research workspace exposes only the nine registered versioned Analytics transformations. Creating a definition or executing a run is an explicit server-side mutation protected by the research role and same-origin mutation checks. Reader GETs never trigger Analytics execution or provider synchronization.
 
-Dashboard summaries return only persisted state. Comparisons are computed by the
-backend, missing metrics are explicit, and GET requests never execute Analytics.
-Next.js Server Components fetch each definition and summary in parallel through a
-server-only client with `cache: "no-store"` and a five-second timeout. Browser API
-traffic remains same-origin under `/api/v1`; the configured FastAPI URL is never sent
-to browser code.
+The comparison workspace accepts at most four raw or persisted-derived selections. The backend returns independent timelines with explicit frequency mismatch and axis semantics; neither backend reader nor browser silently aligns, resamples, fills, interpolates, or invents Ratio/Spread results.
 
-The summary contract keeps point state separate from comparison state. A present point
-remains available or stale even if its comparison is missing, incomparable, or has a
-frequency mismatch. `basis_code` identifies the comparison period and `anchor_policy`
-requires an exact point relationship; existing derived comparisons currently use
-`same_observed_at` and never silently align adjacent dates. Raw freshness uses the
-series threshold, while derived freshness is honestly `not_configured` until a reviewed
-policy exists. `stale_metric_count` is derived from freshness status, and Decimal
-overflow in a comparison is represented as an incomparable comparison rather than a
-failed response.
-
-The featured chart uses the definition's reviewed `featured_chart` flag and one bounded
-raw or derived observation GET (maximum 200 points). Missing observations remain gaps.
-Metric keys are unique across the complete dashboard and are resolved through a
-`group_code` plus `metric_key` lookup. Derived charts use
-`GET /api/v1/analytics-runs/{run_id}/observations` and reject any response whose run,
-definition, or version differs from the selected summary identity.
-
-All Decimal values remain strings: the UI groups digits using string operations and
-uses the original exact values in labels, tooltips, comparisons, and the accessible
-table. A chart-only adapter converts usable values to finite numbers solely for
-approximate ECharts geometry; projected coordinates never enter displayed evidence or
-financial calculation. Empty responses, all-missing points, identity mismatches,
-endpoint failures, and chart-runtime failures have separate safe states.
-
-ECharts colors come from the existing CSS design tokens. The chart observes forced
-`data-theme` changes and operating-system color-scheme changes, updates between system
-dark and forced light, and cleans up its resize, mutation, media-query, and runtime
-resources.
-
-Phase 3A uses a validated code-reviewed catalog with `reviewed_private` and `withheld`
-states. These are private curation states, not public publication eligibility.
-`DataSeries.is_active` remains operational and never auto-publishes a series.
-Presentation and methodology metadata cannot override canonical persisted fields.
-Snapshots distinguish current revision semantics from aware-UTC historical `as_of`
-semantics, and backend-computed previous-observation changes remain exact
-eight-decimal strings. Related-derived reads are reviewed and persisted-only; they do
-not automatically discover or execute Analytics.
-
-Phase 3B adds no migration, provider request, implicit Analytics execution, frontend
-mutation, authentication, or public deployment. `reviewed_private` is not public
-eligibility. Exact Decimal strings remain server-owned business data; browser Number
-conversion is limited to chart geometry, and current/as-of modes are visibly distinct.
-Package and OpenAPI versions remain `0.7.0`, Alembic head remains `20260726_0009`, and
-Phase 4 comparison is connected through the bounded `/api/v1/comparison` read model; Phase 5 private research workspace is connected; Phase 6 public security and deployment remain pending.
-
-Historical mode filters the effective observation's revisions by canonical
-`revision_timestamp <= as_of`, ignoring invalid timestamps and never comparing
-localized display dates. Related-derived and lineage endpoints are current-only;
-historical pages intentionally do not request them and show a Persian limitation
-notice instead. ECharts axis, grid, tooltip, and series colors come from shared CSS
-tokens and update for system or forced-light theme changes after mount. Known
-technical missing reasons are localized, with unknown codes degrading safely.
+Historical indicator mode uses an aware UTC cutoff, suppresses future revisions, and intentionally suppresses current-only related-derived/lineage evidence. Publication and production security do not change the underlying no-look-ahead semantics.
 
 Deterministic production-style visual preview (PowerShell):
 

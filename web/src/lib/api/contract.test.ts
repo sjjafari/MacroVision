@@ -18,7 +18,7 @@ const environmentExample = readFileSync(resolve(process.cwd(), ".env.example"), 
 
 describe("generated API contract", () => {
   it("pins the backend OpenAPI version and required routes", () => {
-    expect(snapshot.info.version).toBe("0.7.0");
+    expect(snapshot.info.version).toBe("0.8.0");
     expect(snapshot.paths).toHaveProperty("/api/v1/data-series");
     expect(snapshot.paths).toHaveProperty(
       "/api/v1/derived-series/{definition_id}/observations/latest",

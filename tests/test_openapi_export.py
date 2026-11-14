@@ -19,7 +19,7 @@ def test_openapi_export_is_deterministic_and_public(tmp_path: Path) -> None:
     assert first_payload.endswith("\n")
 
     document = json.loads(first_payload)
-    assert document["info"]["version"] == "0.7.0"
+    assert document["info"]["version"] == "0.8.0"
     assert "/api/v1/data-series" in document["paths"]
     assert "/api/v1/analytics-runs/{run_id}" in document["paths"]
     assert "/api/v1/dashboards" in document["paths"]
