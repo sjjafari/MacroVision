@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from macrovision.macro_data_models import (
@@ -13,7 +14,8 @@ from macrovision.macro_data_models import (
 
 
 def _series(session: Session, code: str) -> int:
-    source = DataSource(
+    source = session.scalar(select(DataSource).where(DataSource.code == "FRED"))
+    source = source or DataSource(
         code="FRED",
         name="Federal Reserve Economic Data",
         description="Public indicator test source",
