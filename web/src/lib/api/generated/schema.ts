@@ -1188,6 +1188,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/indicator-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Public Catalog */
+        get: operations["list_public_catalog_api_v1_public_indicator_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/indicator-catalog/{series_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Indicator */
+        get: operations["get_public_indicator_api_v1_public_indicator_catalog__series_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/indicator-catalog/{series_id}/related-derived": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Related */
+        get: operations["get_public_related_api_v1_public_indicator_catalog__series_id__related_derived_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/indicator-catalog/{series_id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Snapshot */
+        get: operations["get_public_snapshot_api_v1_public_indicator_catalog__series_id__snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -3284,6 +3352,92 @@ export interface components {
          * @enum {string}
          */
         ProviderSyncTriggerType: "scheduled" | "manual";
+        /** PublicIndicatorCatalogItem */
+        PublicIndicatorCatalogItem: {
+            availability: components["schemas"]["IndicatorAvailability"];
+            /** Catalog Order */
+            catalog_order: number;
+            category: components["schemas"]["SeriesCategory"] | null;
+            curation_status: components["schemas"]["IndicatorCurationStatus"];
+            /** Description Fa */
+            description_fa: string;
+            /** Display Name Fa */
+            display_name_fa: string;
+            /**
+             * Editorial Updated At
+             * Format: date-time
+             */
+            editorial_updated_at: string;
+            frequency: components["schemas"]["DataFrequency"] | null;
+            /** Geography */
+            geography: string | null;
+            /** Localized Unit Label */
+            localized_unit_label: string | null;
+            /** Operational Is Active */
+            operational_is_active: boolean | null;
+            /** Original Name */
+            original_name: string | null;
+            /**
+             * Private Preview
+             * @default false
+             * @constant
+             */
+            private_preview: false;
+            /**
+             * Public Eligibility
+             * @default true
+             * @constant
+             */
+            public_eligibility: true;
+            seasonal_adjustment_status: components["schemas"]["IndicatorSeasonalAdjustmentStatus"];
+            /** Series Code */
+            series_code: string;
+            /** Series Id */
+            series_id: number | null;
+            source: components["schemas"]["IndicatorSourceSummary"] | null;
+            /** Unit */
+            unit: string | null;
+        };
+        /** PublicIndicatorCatalogPage */
+        PublicIndicatorCatalogPage: {
+            /** Items */
+            items: components["schemas"]["PublicIndicatorCatalogItem"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** PublicIndicatorCurationRead */
+        PublicIndicatorCurationRead: {
+            /** Catalog Order */
+            catalog_order: number;
+            /**
+             * Editorial Updated At
+             * Format: date-time
+             */
+            editorial_updated_at: string;
+            /**
+             * Private Preview
+             * @default false
+             * @constant
+             */
+            private_preview: false;
+            /**
+             * Public Eligibility
+             * @default true
+             * @constant
+             */
+            public_eligibility: true;
+        };
+        /** PublicIndicatorDetail */
+        PublicIndicatorDetail: {
+            canonical: components["schemas"]["IndicatorCanonicalRead"];
+            curation: components["schemas"]["PublicIndicatorCurationRead"];
+            presentation: components["schemas"]["IndicatorPresentationRead"];
+            source: components["schemas"]["IndicatorSourceRead"];
+        };
         /** QualityIssueAction */
         QualityIssueAction: {
             /** Actor Reference */
@@ -8084,6 +8238,211 @@ export interface operations {
             };
             /** @description Provider timeout */
             504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_public_catalog_api_v1_public_indicator_catalog_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                search?: string | null;
+                category?: components["schemas"]["SeriesCategory"] | null;
+                geography?: string | null;
+                frequency?: components["schemas"]["DataFrequency"] | null;
+                source_id?: number | null;
+                operational_is_active?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIndicatorCatalogPage"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_public_indicator_api_v1_public_indicator_catalog__series_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIndicatorDetail"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_public_related_api_v1_public_indicator_catalog__series_id__related_derived_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatedDerivedRead"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_public_snapshot_api_v1_public_indicator_catalog__series_id__snapshot_get: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path: {
+                series_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorSnapshot"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Domain or concurrency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
