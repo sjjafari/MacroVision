@@ -108,7 +108,7 @@ body {
     radial-gradient(circle at 78% -20%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 32rem),
     var(--surface-canvas);
   color: var(--text-primary);
-  font-family: Tahoma, Arial, "Segoe UI", sans-serif;
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
   font-size: var(--text-base);
   line-height: 1.75;
   -webkit-font-smoothing: antialiased;
@@ -398,7 +398,7 @@ a {
 .standalone-state h1 {
   max-width: 22ch;
   margin: 0;
-  font-family: Georgia, Tahoma, serif;
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
   font-size: var(--text-xl);
   line-height: 1.45;
   letter-spacing: -0.025em;
@@ -1033,7 +1033,7 @@ a {
   justify-content: space-between;
   gap: var(--space-5);
 }
-.indicator-hero h1,.indicator-detail-header h1 { margin: 0; font: 700 var(--text-xl)/1.5 Georgia,Tahoma,serif; }
+.indicator-hero h1,.indicator-detail-header h1 { margin: 0; font: 800 var(--text-xl)/1.5 Tahoma,"Segoe UI",Arial,sans-serif; letter-spacing:-.015em; }
 .indicator-hero p,.indicator-detail-header p { max-width: 68ch; color: var(--text-secondary); }
 .indicator-filters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-3); padding:var(--space-4); border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--surface-elevated); }
 .indicator-filters label { display:grid; gap:var(--space-1); color:var(--text-secondary); font-size:var(--text-xs); font-weight:700; }
@@ -1293,4 +1293,54 @@ button,.filter-actions a,.asof-switch > a,.asof-switch button { padding:.65rem v
 }
 @media (max-width:48rem) {
   .methodology-grid,.methodology-flow ol,.methodology-notes,.about-scope,.about-security { grid-template-columns:1fr; }
+}
+
+
+/* Post-release visual acceptance polish */
+.release-badge {
+  display:inline-flex;
+  align-items:center;
+  min-height:2rem;
+  padding:.3rem .65rem;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--surface-muted);
+  color:var(--text-secondary);
+  font-size:var(--text-xs);
+  font-weight:800;
+}
+.metric-card,.dashboard-metric-card,.indicator-row,.methodology-grid article,.principles-grid article,
+.research-form,.compare-builder,.evidence-section,.snapshot-panel {
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  .metric-card:hover,.dashboard-metric-card:hover,.indicator-row:hover,.methodology-grid article:hover,
+  .principles-grid article:hover {
+    border-color:var(--border-strong);
+    box-shadow:var(--shadow-md);
+    transform:translateY(-2px);
+  }
+}
+button,.primary-link,.indicator-row-action a {
+  transition:filter .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  button:hover,.primary-link:hover,.indicator-row-action a:hover { filter:brightness(.96); box-shadow:var(--shadow-sm); }
+}
+input,select,textarea { outline:none; }
+input:focus-visible,select:focus-visible,textarea:focus-visible {
+  border-color:var(--focus)!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 16%,transparent);
+}
+table { border-collapse:separate; border-spacing:0; }
+thead th { position:sticky; inset-block-start:0; z-index:1; background:var(--surface-muted); }
+tbody tr:nth-child(even) { background:color-mix(in srgb,var(--surface-muted) 45%,transparent); }
+tbody tr:hover { background:var(--brand-soft); }
+@media (max-width:48rem) {
+  :root { --header-height:4.25rem; }
+  .global-header { gap:var(--space-2); }
+  .brand-mark { width:2.25rem; }
+  .release-badge { display:none; }
+  .page-stack { gap:var(--space-5); }
+  .indicator-row,.metric-card,.dashboard-metric-card,.research-form,.compare-builder { padding:var(--space-4); }
 }
