@@ -545,6 +545,12 @@ try {
       }
     }
   }
+  const methodologyResponse = await fetch(`${webBase}/fa/methodology`);
+  const methodologyHtml = await methodologyResponse.text();
+  if (!methodologyResponse.ok || !methodologyHtml.includes("No look-ahead") || !methodologyHtml.includes("Missing ≠ Zero") || !methodologyHtml.includes("Definition Version")) throw new Error("Methodology route did not render the reviewed evidence contract.");
+  const aboutResponse = await fetch(`${webBase}/fa/about`);
+  const aboutHtml = await aboutResponse.text();
+  if (!aboutResponse.ok || !aboutHtml.includes("زیرساخت شواهد") || !aboutHtml.includes("سیگنال خرید و فروش") || !aboutHtml.includes("v0.8 Web MVP")) throw new Error("About route did not render the completed product boundary.");
   const compareResponse = await fetch(`${webBase}/fa/compare?items=raw%3A11&items=derived%3A31&start=2026-01-01&end=2026-06-30`);
   const compareHtml = await compareResponse.text();
   if (!compareResponse.ok || !compareHtml.includes("321.40000000") || !compareHtml.includes("3.25000000") || !compareHtml.includes("هشدار اختلاف تناوب")) throw new Error("Comparison route did not render exact multi-series evidence.");
@@ -646,7 +652,7 @@ try {
   }
 
   console.log(
-    "Production smoke passed: connected dashboards, indicators, comparison, private research shell, nine routes, safe proxying, chart gaps, and exact Decimal.",
+    "Production smoke passed: connected dashboards, indicators, comparison, private research, reviewed methodology/about, nine routes, safe proxying, chart gaps, and exact Decimal.",
   );
 } finally {
   nextProcess.kill();
