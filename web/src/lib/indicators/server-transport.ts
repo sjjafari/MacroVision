@@ -7,17 +7,21 @@ type ReadResult<T> = { data: T | null; status: number };
 
 export function createIndicatorTransport() {
   const client = createServerApiClient();
+  const publicMode = process.env.MACROVISION_SECURITY_MODE === "production";
   return {
     async catalog(query: IndicatorQuery) {
-      const result = await client.GET("/api/v1/indicator-catalog", { params: { query } });
+      const path = publicMode ? "/api/v1/public/indicator-catalog" as const : "/api/v1/indicator-catalog" as const;
+      const result = await client.GET(path, { params: { query } });
       return { data: result.data ?? null, status: result.response.status } as ReadResult<NonNullable<typeof result.data>>;
     },
     async detail(seriesId: number) {
-      const result = await client.GET("/api/v1/indicator-catalog/{series_id}", { params: { path: { series_id: seriesId } } });
+      const path = publicMode ? "/api/v1/public/indicator-catalog/{series_id}" as const : "/api/v1/indicator-catalog/{series_id}" as const;
+      const result = await client.GET(path, { params: { path: { series_id: seriesId } } });
       return { data: result.data ?? null, status: result.response.status };
     },
     async snapshot(seriesId: number, asOf?: string) {
-      const result = await client.GET("/api/v1/indicator-catalog/{series_id}/snapshot", { params: { path: { series_id: seriesId }, query: { as_of: asOf } } });
+      const path = publicMode ? "/api/v1/public/indicator-catalog/{series_id}/snapshot" as const : "/api/v1/indicator-catalog/{series_id}/snapshot" as const;
+      const result = await client.GET(path, { params: { path: { series_id: seriesId }, query: { as_of: asOf } } });
       return { data: result.data ?? null, status: result.response.status };
     },
     async observations(seriesId: number, start: string, end: string, asOf?: string) {
@@ -31,7 +35,8 @@ export function createIndicatorTransport() {
       return { data: result.data ?? null, status: result.response.status };
     },
     async related(seriesId: number) {
-      const result = await client.GET("/api/v1/indicator-catalog/{series_id}/related-derived", { params: { path: { series_id: seriesId } } });
+      const path = publicMode ? "/api/v1/public/indicator-catalog/{series_id}/related-derived" as const : "/api/v1/indicator-catalog/{series_id}/related-derived" as const;
+      const result = await client.GET(path, { params: { path: { series_id: seriesId } } });
       return { data: result.data ?? null, status: result.response.status };
     },
     async lineage(runId: number, observationId: number) {
