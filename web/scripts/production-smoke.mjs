@@ -280,6 +280,29 @@ const upstream = createServer((request, response) => {
     }));
     return;
   }
+  const decisionFixture = {
+    id: 7, title: "پرونده تورم", question: "آیا فشار تورمی پایدار می‌ماند؟", context: "زمینهٔ آزمون",
+    rationale: "فرضیه باید با شواهد موافق و مخالف سنجیده شود.", probability: "0.650000", confidence: "0.700000",
+    status: "under_review", current_version: 2, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-02-01T00:00:00Z",
+    hypotheses: [{ id: 1, decision_id: 7, statement: "تورم چسبنده باقی می‌ماند", rationale: "آزمون‌پذیر", created_at: "2026-01-02T00:00:00Z" }],
+    supporting_evidence: [{ id: 2, decision_id: 7, side: "supporting", source_title: "دادهٔ تورم", source_type: "market_data", publication_date: "2026-01-15", reference: null, reliability_score: "0.900000", relevance_score: "0.850000", notes: "شاهد موافق", created_at: "2026-01-15T00:00:00Z" }],
+    opposing_evidence: [{ id: 3, decision_id: 7, side: "opposing", source_title: "دادهٔ رشد", source_type: "market_data", publication_date: "2026-01-16", reference: null, reliability_score: "0.800000", relevance_score: "0.750000", notes: "شاهد مخالف", created_at: "2026-01-16T00:00:00Z" }],
+    critic_reviews: [{ id: 4, decision_id: 7, reviewer: "Critic", analysis: "سناریوی جایگزین باید حفظ شود.", key_risks: "ریسک افت تقاضا", recommendation: "پایش ادامه یابد", created_at: "2026-01-20T00:00:00Z" }],
+    invalidation_rules: [{ id: 5, decision_id: 7, condition: "کاهش پایدار فشار قیمت", observation_source: "CPI", notes: "", created_at: "2026-01-21T00:00:00Z" }],
+    outcome: null
+  };
+  if (url.pathname === "/api/v1/decisions") {
+    response.writeHead(200, { "content-type": "application/json" }); response.end(JSON.stringify([decisionFixture])); return;
+  }
+  if (url.pathname === "/api/v1/decisions/7") {
+    response.writeHead(200, { "content-type": "application/json" }); response.end(JSON.stringify(decisionFixture)); return;
+  }
+  if (url.pathname === "/api/v1/decisions/7/history") {
+    response.writeHead(200, { "content-type": "application/json" }); response.end(JSON.stringify([
+      { id: 1, decision_id: 7, version: 1, event: "created", status: "draft", probability: "0.600000", confidence: "0.600000", rationale: "نسخه اولیه", change_summary: "Initial decision case created", created_at: "2026-01-01T00:00:00Z" },
+      { id: 6, decision_id: 7, version: 2, event: "review_started", status: "under_review", probability: "0.650000", confidence: "0.700000", rationale: "فرضیه باید با شواهد موافق و مخالف سنجیده شود.", change_summary: "Independent critic review started", created_at: "2026-01-20T00:00:00Z" }
+    ])); return;
+  }
   if (url.pathname === "/api/v1/indicator-catalog") {
     const searched = url.searchParams.get("search");
     response.writeHead(200, { "content-type": "application/json" });
@@ -505,6 +528,8 @@ try {
     "/fa/indicators",
     "/fa/indicators/11",
     "/fa/compare",
+    "/fa/decisions",
+    "/fa/decisions/7",
     "/fa/research",
     "/fa/methodology",
     "/fa/about",
@@ -545,6 +570,10 @@ try {
       }
     }
   }
+  const decisionIndex = await fetch(`${webBase}/fa/decisions`); const decisionIndexHtml = await decisionIndex.text();
+  if (!decisionIndex.ok || !decisionIndexHtml.includes("پرونده تورم") || !decisionIndexHtml.includes("0.650000")) throw new Error("Decision index did not render exact persisted evidence.");
+  const decisionDetail = await fetch(`${webBase}/fa/decisions/7`); const decisionDetailHtml = await decisionDetail.text();
+  if (!decisionDetail.ok || !decisionDetailHtml.includes("شواهد پشتیبان") || !decisionDetailHtml.includes("شواهد نقض‌کننده") || !decisionDetailHtml.includes("تاریخچه تغییرناپذیر") || !decisionDetailHtml.includes("0.700000")) throw new Error("Decision dossier did not render balanced evidence and immutable history.");
   const methodologyResponse = await fetch(`${webBase}/fa/methodology`);
   const methodologyHtml = await methodologyResponse.text();
   if (!methodologyResponse.ok || !methodologyHtml.includes("No look-ahead") || !methodologyHtml.includes("Missing ≠ Zero") || !methodologyHtml.includes("Definition Version")) throw new Error("Methodology route did not render the reviewed evidence contract.");
@@ -652,7 +681,7 @@ try {
   }
 
   console.log(
-    "Production smoke passed: connected dashboards, indicators, comparison, private research, reviewed methodology/about, nine routes, safe proxying, chart gaps, and exact Decimal.",
+    "Production smoke passed: connected dashboards, indicators, comparison, private research, reviewed methodology/about, v0.9 decision reader, safe proxying, chart gaps, and exact Decimal.",
   );
 } finally {
   nextProcess.kill();
