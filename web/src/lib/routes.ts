@@ -25,6 +25,8 @@ export const WEB_ROUTES = [
     navigation: false,
   },
   { href: "/fa/compare", label: "مقایسه", shortLabel: "مقایسه", phase: 4, navigation: true },
+  { href: "/fa/decisions", label: "تصمیم‌ها", shortLabel: "تصمیم", phase: 6, navigation: true },
+  { href: "/fa/decisions/[decisionId]", label: "پرونده تصمیم", shortLabel: "پرونده", phase: 6, navigation: false },
   {
     href: "/fa/research",
     label: "فضای پژوهش",

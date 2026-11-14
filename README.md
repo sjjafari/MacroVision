@@ -1,5 +1,7 @@
 # MacroVision
 
+> **v0.9 development:** the protected Persian Decision Intelligence reader is being added on top of the stable v0.8.0 release. It reads existing immutable Decision Engine records and history; it does not create decisions during GET render, generate trading signals, connect to brokers, or change the v0.8 public indicator allowlist.
+
 MacroVision v0.8.0 is an Investment Decision Intelligence Platform with a Persian RTL Web MVP, vintage-aware macro data, deterministic versioned Analytics, evidence lineage, comparison, and a private research workspace. It is designed for hypothesis-driven research and auditable decision support, not trading signals, personalized financial advice, brokerage connectivity, or automatic trade execution.
 
 The Web MVP implements exactly nine approved Persian routes: `/fa`, `/fa/markets`, `/fa/macro`, `/fa/indicators`, `/fa/indicators/[seriesId]`, `/fa/compare`, `/fa/research`, `/fa/methodology`, and `/fa/about`. Exact Decimal values remain authoritative; browser Number conversion is restricted to chart geometry. Historical as-of reads preserve no-look-ahead semantics and revision cutoffs.
