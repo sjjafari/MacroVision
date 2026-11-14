@@ -1,36 +1,42 @@
-from typing import Any, cast
+from typing import Any
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from macrovision.macro_data_models import (
+    DataFrequency,
+    DataSeries,
+    DataSource,
+    SeasonalAdjustment,
+    SeriesCategory,
+)
 
 
-def _source(client: TestClient) -> int:
-    response = client.post(
-        "/api/v1/data-sources",
-        json={"code": "PUBLIC", "name": "Public source", "description": "", "reference_url": None},
+def _series(session: Session, code: str) -> int:
+    source = DataSource(
+        code="FRED",
+        name="Federal Reserve Economic Data",
+        description="Public indicator test source",
+        reference_url="https://fred.stlouisfed.org/",
     )
-    assert response.status_code == 201
-    return cast(int, response.json()["id"])
-
-
-def _series(client: TestClient, source_id: int, code: str) -> int:
-    response = client.post(
-        "/api/v1/data-series",
-        json={
-            "source_id": source_id,
-            "code": code,
-            "name": code,
-            "description": "",
-            "category": "inflation",
-            "geography": "US",
-            "frequency": "monthly",
-            "unit": "index",
-            "seasonal_adjustment": "seasonally_adjusted",
-            "publication_lag_days": 0,
-            "metadata": {},
-        },
+    series = DataSeries(
+        source=source,
+        code=code,
+        name=code,
+        description="Public indicator test series",
+        category=SeriesCategory.inflation,
+        geography="US",
+        frequency=DataFrequency.monthly,
+        unit="index",
+        seasonal_adjustment=SeasonalAdjustment.adjusted,
+        publication_lag_days=0,
+        is_active=True,
+        series_metadata={},
+        lock_version=1,
     )
-    assert response.status_code == 201
-    return cast(int, response.json()["id"])
+    session.add(series)
+    session.commit()
+    return series.id
 
 
 def test_public_catalog_is_explicit_allowlist_not_private_curation(client: TestClient) -> None:
@@ -51,18 +57,20 @@ def test_public_catalog_is_explicit_allowlist_not_private_curation(client: TestC
     assert all(item["private_preview"] is False for item in payload["items"])
 
 
-def test_public_detail_fails_closed_for_private_or_unknown_series(client: TestClient) -> None:
-    source_id = _source(client)
-    withheld_id = _series(client, source_id, "FRED.NFCI")
-    unknown_id = _series(client, source_id, "PRIVATE.UNRELATED")
+def test_public_detail_fails_closed_for_private_or_unknown_series(
+    client: TestClient, db_session: Session
+) -> None:
+    withheld_id = _series(db_session, "FRED.NFCI")
+    unknown_id = _series(db_session, "PRIVATE.UNRELATED")
     for series_id in (withheld_id, unknown_id, 999999):
         response = client.get(f"/api/v1/public/indicator-catalog/{series_id}")
         assert response.status_code == 404
 
 
-def test_public_detail_exposes_only_explicitly_eligible_series(client: TestClient) -> None:
-    source_id = _source(client)
-    series_id = _series(client, source_id, "FRED.CPIAUCSL")
+def test_public_detail_exposes_only_explicitly_eligible_series(
+    client: TestClient, db_session: Session
+) -> None:
+    series_id = _series(db_session, "FRED.CPIAUCSL")
     response = client.get(f"/api/v1/public/indicator-catalog/{series_id}")
     assert response.status_code == 200
     payload: dict[str, Any] = response.json()
