@@ -49,7 +49,7 @@ describe("AppShell", () => {
       const href = link.getAttribute("href");
       return href?.startsWith("/fa");
     });
-    expect(navigationLinks).toHaveLength(19);
+    expect(navigationLinks).toHaveLength(21);
     for (const href of [
       "/fa",
       "/fa/markets",
@@ -57,6 +57,7 @@ describe("AppShell", () => {
       "/fa/indicators",
       "/fa/compare",
       "/fa/decisions",
+      "/fa/portfolios",
       "/fa/research",
       "/fa/methodology",
       "/fa/about",
@@ -73,6 +74,7 @@ describe("AppShell", () => {
     ["/fa/indicators", "/fa/indicators"],
     ["/fa/indicators/DEMO.SERIES", "/fa/indicators"],
     ["/fa/decisions/7", "/fa/decisions"],
+    ["/fa/portfolios/4", "/fa/portfolios"],
   ])("marks %s active in desktop and mobile navigation", (currentPath, activeHref) => {
     pathname.value = currentPath;
     render(<AppShell>محتوا</AppShell>);

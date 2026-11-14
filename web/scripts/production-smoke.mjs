@@ -280,6 +280,12 @@ const upstream = createServer((request, response) => {
     }));
     return;
   }
+  const portfolioFixture = { id:4, investor_id:null, name:"سبد اصلی", base_currency:"USD", lock_version:3, created_at:"2026-01-01T00:00:00Z", positions:[{id:9,symbol:"AAA",asset_name:"دارایی آزمون",quantity:"2.0000000000",average_cost:"10.00000000",current_price:"12.00000000",market_value:"24.00000000",cost_basis:"20.00000000",realized_pl:"0.00000000",unrealized_pl:"4.00000000",allocation_percentage:"24.00000000"}], cash_balances:[{currency:"USD",balance:"76.00000000"},{currency:"EUR",balance:"5.00000000"}] };
+  if (url.pathname === "/api/v1/portfolios") { response.writeHead(200,{"content-type":"application/json"});response.end(JSON.stringify([portfolioFixture]));return; }
+  if (url.pathname === "/api/v1/portfolios/4") { response.writeHead(200,{"content-type":"application/json"});response.end(JSON.stringify(portfolioFixture));return; }
+  if (url.pathname === "/api/v1/portfolios/4/summary") { response.writeHead(200,{"content-type":"application/json"});response.end(JSON.stringify({portfolio_id:4,valuation_currency:"USD",total_value:"100.00000000",position_value:"24.00000000",base_cash_balance:"76.00000000",total_cost_basis:"20.00000000",realized_pl:"1.00000000",unrealized_pl:"4.00000000",allocations:{AAA:"24.00000000",CASH:"76.00000000"},cash_balances:{USD:"76.00000000",EUR:"5.00000000"},unconverted_cash_currencies:["EUR"]}));return; }
+  if (url.pathname === "/api/v1/portfolios/4/transactions") { response.writeHead(200,{"content-type":"application/json"});response.end(JSON.stringify([{id:1,portfolio_id:4,transaction_type:"buy",symbol:"AAA",asset_name:"دارایی آزمون",quantity:"2.0000000000",unit_price:"10.00000000",amount:"20.00000000",currency:"USD",realized_pl:"0.00000000",note:"",occurred_at:"2026-01-02T00:00:00Z",created_at:"2026-01-02T00:00:00Z"}]));return; }
+  if (url.pathname === "/api/v1/portfolios/4/snapshots") { response.writeHead(200,{"content-type":"application/json"});response.end(JSON.stringify([{id:1,portfolio_id:4,captured_at:"2026-02-01T00:00:00Z",total_value:"100.00000000",position_value:"24.00000000",base_cash_balance:"76.00000000",total_cost_basis:"20.00000000",realized_pl:"1.00000000",unrealized_pl:"4.00000000",allocations:{AAA:"24.00000000",CASH:"76.00000000"},cash_balances:{USD:"76.00000000",EUR:"5.00000000"},created_at:"2026-02-01T00:00:00Z"}]));return; }
   const decisionFixture = {
     id: 7, title: "پرونده تورم", question: "آیا فشار تورمی پایدار می‌ماند؟", context: "زمینهٔ آزمون",
     rationale: "فرضیه باید با شواهد موافق و مخالف سنجیده شود.", probability: "0.650000", confidence: "0.700000",
@@ -530,6 +536,8 @@ try {
     "/fa/compare",
     "/fa/decisions",
     "/fa/decisions/7",
+    "/fa/portfolios",
+    "/fa/portfolios/4",
     "/fa/research",
     "/fa/methodology",
     "/fa/about",
@@ -570,6 +578,10 @@ try {
       }
     }
   }
+  const portfolioIndex = await fetch(`${webBase}/fa/portfolios`); const portfolioIndexHtml = await portfolioIndex.text();
+  if (!portfolioIndex.ok || !portfolioIndexHtml.includes("سبد اصلی")) throw new Error("Portfolio index did not render persisted portfolios.");
+  const portfolioDetail = await fetch(`${webBase}/fa/portfolios/4`); const portfolioDetailHtml = await portfolioDetail.text();
+  if (!portfolioDetail.ok || !portfolioDetailHtml.includes("100.00000000") || !portfolioDetailHtml.includes("5.00000000") || !portfolioDetailHtml.includes("نقد تبدیل‌نشده") || !portfolioDetailHtml.includes("تراکنش‌ها")) throw new Error("Portfolio detail did not render exact accounting and unconverted cash evidence.");
   const decisionIndex = await fetch(`${webBase}/fa/decisions`); const decisionIndexHtml = await decisionIndex.text();
   if (!decisionIndex.ok || !decisionIndexHtml.includes("پرونده تورم") || !decisionIndexHtml.includes("0.650000")) throw new Error("Decision index did not render exact persisted evidence.");
   const decisionDetail = await fetch(`${webBase}/fa/decisions/7`); const decisionDetailHtml = await decisionDetail.text();
@@ -681,7 +693,7 @@ try {
   }
 
   console.log(
-    "Production smoke passed: connected dashboards, indicators, comparison, private research, reviewed methodology/about, v0.9 decision reader, safe proxying, chart gaps, and exact Decimal.",
+    "Production smoke passed: connected dashboards, indicators, comparison, private research, reviewed methodology/about, v0.9 decision and portfolio readers, safe proxying, chart gaps, and exact Decimal.",
   );
 } finally {
   nextProcess.kill();
