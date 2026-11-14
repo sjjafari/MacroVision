@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { DECISION_STATUS_FA,decisionCompleteness,type DecisionCase,type DecisionRevision } from "@/lib/decisions/types";
+import { DecisionMutationPanel } from "./decision-actions";
 
 const sourceFa:Record<string,string>={research_paper:"مقاله پژوهشی",financial_statement:"صورت مالی",market_data:"داده بازار",news:"خبر",expert_opinion:"نظر متخصص",internal_analysis:"تحلیل داخلی",other:"سایر"};
 const eventFa:Record<string,string>={created:"ایجاد",review_started:"شروع بررسی",revised:"بازنگری",activated:"فعال‌سازی",invalidated:"ابطال",closed:"بستن"};
 function when(value:string){return new Intl.DateTimeFormat("fa-IR",{dateStyle:"medium",timeStyle:"short",timeZone:"UTC"}).format(new Date(value));}
 
-export function DecisionDetail({decision:d,history}:{decision:DecisionCase;history:DecisionRevision[]}) {
+export function DecisionDetail({decision:d,history,error}:{decision:DecisionCase;history:DecisionRevision[];error?:string}) {
  const checks=decisionCompleteness(d);
  return <div className="page-stack decision-detail">
   <div className="breadcrumb-row"><Link href="/fa/decisions">پرونده‌های تصمیم</Link><span>/</span><span className="ltr">#{d.id}</span></div>
@@ -22,6 +23,7 @@ export function DecisionDetail({decision:d,history}:{decision:DecisionCase;histo
   </section>
   <section className="evidence-section"><header><p className="eyebrow">گیت فعال‌سازی</p><h2>کامل‌بودن پرونده</h2></header><div className="decision-completeness decision-completeness-large">{checks.map(x=><span key={x.key} className={x.complete?"complete":undefined}>{x.complete?"✓":"○"} {x.label}</span>)}</div><p className="muted">این نمایش فقط آینهٔ قواعد فعلی Backend است؛ تصمیم نهایی برای فعال‌سازی همیشه با Backend است.</p></section>
   <section className="evidence-section"><header><p className="eyebrow">Audit trail</p><h2>تاریخچه تغییرناپذیر</h2></header><ol className="decision-timeline">{history.map(h=><li key={h.id}><div><strong>نسخه <span className="ltr">{h.version}</span> · {eventFa[h.event]??h.event}</strong><span className="ltr">{when(h.created_at)}</span></div><p>{h.change_summary}</p><small>احتمال <span className="ltr">{h.probability}</span> · اطمینان <span className="ltr">{h.confidence}</span> · {DECISION_STATUS_FA[h.status]}</small></li>)}</ol></section>
+  <DecisionMutationPanel decision={d} error={error}/>
   {d.outcome&&<section className="evidence-section decision-outcome"><header><p className="eyebrow">Outcome</p><h2>نتیجه و درس‌آموخته</h2></header><p>{d.outcome.outcome}</p><h3>درس‌آموخته</h3><p>{d.outcome.lessons_learned}</p><p>ارزیابی دقت: <span className="ltr">{d.outcome.accuracy_assessment}</span></p></section>}
  </div>;
 }
