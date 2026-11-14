@@ -1,5 +1,7 @@
 # MacroVision
 
+> **Web MVP v0.8 status:** all nine Persian routes are implemented. Phase 4 comparison, Phase 5 private research, reviewed Methodology/About content, and the Stage B production security/deployment boundary are present on `main`. Internet publication is still an operator action: production secrets, OAuth credentials, TLS certificates, authorized-user lists, PostgreSQL backup/restore verification, and deployment smoke must be configured and verified before exposure.
+
 Web MVP Phase 4 adds a private, read-only multi-series comparison contract and Persian comparison workspace. It accepts at most four raw or persisted-derived selections, preserves independent timelines and exact Decimal strings, exposes frequency/axis warnings, supports historical as-of reads, and performs no implicit alignment, resampling, filling, provider synchronization, or Analytics execution. Public deployment remains prohibited until Stage B security gates are complete.
 
 > MacroVision v0.7.0 provides the public, vintage-aware Macro Analytics API. Release
