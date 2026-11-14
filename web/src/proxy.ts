@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeTrustedHeaders, securityMode } from "@/lib/security/request-auth";
 
 const exactPublicPaths = new Set(["/fa/about", "/fa/methodology", "/fa/indicators"]);
-function isPublicPath(pathname: string) {
+export function isPublicPath(pathname: string) {
   return exactPublicPaths.has(pathname) || pathname.startsWith("/fa/indicators/");
 }
 
