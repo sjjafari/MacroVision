@@ -33,6 +33,18 @@ server {
 
   location = /fa/about { proxy_pass http://macrovision_web; }
   location = /fa/methodology { proxy_pass http://macrovision_web; }
+  location = /fa/indicators { limit_req zone=mv_public burst=30 nodelay; proxy_pass http://macrovision_web; }
+  location ^~ /fa/indicators/ { limit_req zone=mv_public burst=30 nodelay; proxy_pass http://macrovision_web; }
+
+  location ^~ /api/v1/public/ {
+    limit_req zone=mv_public burst=30 nodelay;
+    limit_req_status 429;
+    limit_except GET { deny all; }
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_pass http://macrovision_web;
+  }
 
   location /api/ {
     limit_req zone=mv_api burst=10 nodelay;
@@ -42,7 +54,8 @@ server {
     proxy_set_header X-Auth-Request-User $user;
     proxy_set_header X-MacroVision-Proxy-Secret "${MACROVISION_TRUSTED_PROXY_SECRET}";
     proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto https;\n    proxy_set_header X-Forwarded-Host $host;\n    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
     proxy_pass http://macrovision_web;
   }
 
@@ -56,6 +69,7 @@ server {
     proxy_set_header X-MacroVision-Proxy-Secret "${MACROVISION_TRUSTED_PROXY_SECRET}";
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
     proxy_pass http://macrovision_web;
   }
 
