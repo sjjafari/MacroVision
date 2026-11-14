@@ -52,7 +52,9 @@ function safeResponseHeaders(upstream: Response): Headers {
 async function proxy(request: Request, context: RouteContext): Promise<Response> {
   let mutationActor: {user:string;role:string}|null=null;
   try {
-    if (securityMode() === "production") {
+    const { path } = await context.params;
+    const publicRead = (request.method === "GET" || request.method === "HEAD") && path[0] === "public";
+    if (securityMode() === "production" && !publicRead) {
       const required = request.method === "GET" || request.method === "HEAD" ? "reader" : "research";
       const identity = required === "research" ? authorizeMutationHeaders(request.headers, required) : authorizeTrustedHeaders(request.headers, required);
       if (!identity) {
@@ -62,7 +64,6 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
     }
     const backend = getBackendUrl();
     const backendBase = new URL(backend);
-    const { path } = await context.params;
     const requestUrl = new URL(request.url);
     const basePath = backend.pathname === "/" ? "" : backend.pathname;
     backend.pathname = `${basePath}/api/v1/${path.map(encodeURIComponent).join("/")}`;
