@@ -18,6 +18,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Verify release identity
+        env:
+          PYTHONPATH: src
         run: |
           python - <<'PY'
           from macrovision import __version__
