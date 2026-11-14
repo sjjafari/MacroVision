@@ -584,6 +584,8 @@ try {
   if (!portfolioDetail.ok || !portfolioDetailHtml.includes("100.00000000") || !portfolioDetailHtml.includes("5.00000000") || !portfolioDetailHtml.includes("نقد تبدیل‌نشده") || !portfolioDetailHtml.includes("تراکنش‌ها")) throw new Error("Portfolio detail did not render exact accounting and unconverted cash evidence.");
   const decisionIndex = await fetch(`${webBase}/fa/decisions`); const decisionIndexHtml = await decisionIndex.text();
   if (!decisionIndex.ok || !decisionIndexHtml.includes("پرونده تورم") || !decisionIndexHtml.includes("0.650000")) throw new Error("Decision index did not render exact persisted evidence.");
+  const decisionContext = await fetch(`${webBase}/fa/decisions/7?portfolio_id=4`); const decisionContextHtml = await decisionContext.text();
+  if (!decisionContext.ok || !decisionContextHtml.includes("اثر تصمیم در کنار مواجههٔ پرتفو") || !decisionContextHtml.includes("100.00000000") || !decisionContextHtml.includes("هیچ Allocation")) throw new Error("Decision portfolio context did not render selected persisted exposure without recommendation.");
   const decisionDetail = await fetch(`${webBase}/fa/decisions/7`); const decisionDetailHtml = await decisionDetail.text();
   if (!decisionDetail.ok || !decisionDetailHtml.includes("شواهد پشتیبان") || !decisionDetailHtml.includes("شواهد نقض‌کننده") || !decisionDetailHtml.includes("تاریخچه تغییرناپذیر") || !decisionDetailHtml.includes("0.700000")) throw new Error("Decision dossier did not render balanced evidence and immutable history.");
   const methodologyResponse = await fetch(`${webBase}/fa/methodology`);
@@ -693,7 +695,7 @@ try {
   }
 
   console.log(
-    "Production smoke passed: connected dashboards, indicators, comparison, private research, reviewed methodology/about, v0.9 decision and portfolio readers, safe proxying, chart gaps, and exact Decimal.",
+    "Production smoke passed: connected dashboards, indicators, comparison, private research, reviewed methodology/about, v0.9 decision/portfolio readers and read-only context, safe proxying, chart gaps, and exact Decimal.",
   );
 } finally {
   nextProcess.kill();
