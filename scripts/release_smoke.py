@@ -43,8 +43,8 @@ def main() -> None:
     with TestClient(app) as client:
         _response(client.get("/health"), 200, "health")
         openapi = _response(client.get("/openapi.json"), 200, "openapi")
-        if openapi["info"]["version"] != "0.7.0":
-            raise RuntimeError("Installed OpenAPI version is not 0.7.0")
+        if openapi["info"]["version"] != "0.8.0":
+            raise RuntimeError("Installed OpenAPI version is not 0.8.0")
         required_paths = {
             "/api/v1/derived-series",
             "/api/v1/derived-series/{definition_id}/runs",
@@ -52,9 +52,13 @@ def main() -> None:
             "/api/v1/analytics-runs/{run_id}/observations/{observation_id}/lineage",
             "/api/v1/derived-series/{definition_id}/observations/latest",
             "/api/v1/derived-series/{definition_id}/observations/as-of",
+            "/api/v1/comparison",
+            "/api/v1/indicator-catalog",
+            "/api/v1/public/indicator-catalog",
+            "/api/v1/dashboards/{dashboard_code}/summary",
         }
         if not required_paths <= set(openapi["paths"]):
-            raise RuntimeError("Installed wheel is missing Analytics routes")
+            raise RuntimeError("Installed wheel is missing v0.8 routes")
         if any(field in str(openapi) for field in private_fields):
             raise RuntimeError("OpenAPI exposed a private fingerprint")
 
