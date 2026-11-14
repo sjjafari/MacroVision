@@ -1,0 +1,50 @@
+name: Publish MacroVision v0.8.0
+
+on:
+  push:
+    branches: [ops/publish-v0.8.0]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f90656abf1ebee6e4c8ded41bb67daa1b2b6b795
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify release identity
+        run: |
+          python - <<'PY'
+          from macrovision import __version__
+          assert __version__ == "0.8.0"
+          PY
+      - name: Build wheel and source distribution
+        run: |
+          python -m pip install build
+          python -m build
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > /tmp/release-notes.md <<'EOF'
+          MacroVision v0.8.0 delivers the completed Persian Web MVP on top of the vintage-aware Analytics foundation.
+
+          Highlights:
+          - all nine approved Persian RTL routes implemented
+          - reviewed indicators with current/as-of evidence and revisions
+          - bounded multi-series comparison with explicit frequency/axis semantics
+          - private versioned Analytics research workspace with lineage
+          - reviewed Methodology/About surfaces
+          - Stage B OAuth/RBAC/CSRF/rate-limit/TLS production boundary
+          - fail-closed publication eligibility for public indicator reads
+          - exact Decimal evidence and no-look-ahead historical behavior
+          - PostgreSQL production topology plus backup/restore procedures
+
+          This release does not automatically deploy MacroVision to the Internet. Target-environment OAuth credentials, TLS certificates, secrets, authorized users, PostgreSQL backup/restore verification, and deployment smoke remain operator deployment inputs.
+          EOF
+          gh release create v0.8.0 dist/*             --repo "${{ github.repository }}"             --target "f90656abf1ebee6e4c8ded41bb67daa1b2b6b795"             --title "MacroVision v0.8.0"             --notes-file /tmp/release-notes.md             --verify-tag=false
