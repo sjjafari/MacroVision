@@ -73,3 +73,8 @@ rate-limit 429 behavior, backup/restore of PostgreSQL, and that ports 3000,
 - Monitor 401/403/429/5xx rates and container restarts. Ship stdout/stderr to append-only centralized logging; Web emits structured JSON audit events for authenticated research definitions, Analytics runs, and generic API mutations.
 - Never log OAuth tokens, cookies, provider credentials, or the trusted proxy
   secret.
+
+
+## Public reader boundary
+
+The production gateway leaves only `/fa/about`, `/fa/methodology`, `/fa/indicators`, indicator detail routes, and GET requests under `/api/v1/public/` unauthenticated. Indicator data is additionally filtered by the backend publication allowlist; private curation alone never grants public eligibility. All dashboards, comparison, research, non-public API reads, and every mutation continue through OAuth2 Proxy and the trusted-ingress RBAC boundary. Do not bypass the gateway by publishing the web or backend container ports.
