@@ -10,7 +10,7 @@ type Side=components["schemas"]["EvidenceSide"];
 
 function text(form:FormData,key:string,max=4000){const value=String(form.get(key)??"").trim();return value&&value.length<=max?value:null;}
 function positive(form:FormData,key:string){const raw=text(form,key,20);if(!raw||!/^\d+$/.test(raw))return null;const n=Number(raw);return Number.isSafeInteger(n)&&n>0?n:null;}
-function score(form:FormData,key:string){const raw=text(form,key,20);if(!raw||!^(?:0(?:\.\d{1,6})?|1(?:\.0{1,6})?)$/.test(raw))return null;return raw;}
+function score(form:FormData,key:string){const raw=text(form,key,20);if(!raw||!/^(?:0(?:\.\d{1,6})?|1(?:\.0{1,6})?)$/.test(raw))return null;return raw;}
 function optionalDate(form:FormData,key:string){const raw=String(form.get(key)??"").trim();if(!raw)return undefined;if(!/^\d{4}-\d{2}-\d{2}$/.test(raw))return null;const d=new Date(raw+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().startsWith(raw)?raw:null;}
 function confirmed(form:FormData){return form.get("confirm")==="yes";}
 function fail(path:string,message:string):never{redirect(path+(path.includes("?")?"&":"?")+"error="+encodeURIComponent(message));}
