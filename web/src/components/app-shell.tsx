@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { PrivatePreviewBadge } from "@/components/badges";
 import { NavigationLinks } from "@/components/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -18,8 +17,8 @@ export function GlobalHeader() {
         </span>
       </Link>
       <div className="header-actions">
+        <span className="release-badge ltr">v0.8.0</span>
         <ThemeToggle />
-        <PrivatePreviewBadge />
       </div>
     </header>
   );
@@ -62,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <footer className="site-footer">
-        <span>MacroVision v0.8 — زیرساخت نمای وب</span>
+        <span>MacroVision v0.8 — پلتفرم پژوهش اقتصاد کلان</span>
         <span>داده و تحلیل از تفسیر جدا می‌مانند.</span>
       </footer>
       <MobileNavigation />
