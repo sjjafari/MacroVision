@@ -24,6 +24,7 @@ from macrovision.macro_data_api import router as macro_data_router
 from macrovision.portfolio_api import router as portfolio_router
 from macrovision.provider_api import router as provider_router
 from macrovision.provider_contracts import ProviderError
+from macrovision.public_indicator_api import router as public_indicator_router
 from macrovision.scheduler_api import router as scheduler_router
 
 
@@ -62,3 +63,4 @@ app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(indicator_router, prefix="/api/v1")
 app.include_router(comparison_router, prefix="/api/v1")
+app.include_router(public_indicator_router, prefix="/api/v1")
