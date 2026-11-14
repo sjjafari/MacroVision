@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import { DecisionDetail } from "@/components/decisions/decision-detail";
 import { loadDecisionDetail } from "@/lib/decisions/loader";
