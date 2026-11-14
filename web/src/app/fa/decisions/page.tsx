@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { DecisionIndex } from "@/components/decisions/decision-index";
 import { loadDecisionIndex } from "@/lib/decisions/loader";
 
