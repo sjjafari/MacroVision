@@ -44,11 +44,11 @@ system-dark and forced-light changes.
 No browser financial calculation, implicit Analytics execution, provider request, or
 frontend mutation is performed.
 
-This remains a private trusted-network preview. Authentication and authorization are
-absent, public deployment is prohibited, and the remaining six Persian routes are
-shells for later phases. Phase 3 publication work remains pending. Phase 2B does not
-change package or OpenAPI version `0.7.0`, add a migration, or move Alembic head
-`20260726_0009`.
+Historical Phase 2B note: at that milestone this surface was a private trusted-network
+preview and the remaining routes were still shells. Those constraints were subsequently
+superseded by the completed v0.8.0 Web MVP, Stage B authentication/authorization boundary,
+and explicit publication eligibility described at the top of this README. Phase 2B itself
+added no migration and did not move Alembic head `20260726_0009`.
 
 ## Private Web MVP v0.8 Phase 3A
 
@@ -91,10 +91,10 @@ and `public_eligibility` is always `false`. Catalog `search` and `geography` fil
 trimmed before case-insensitive matching; whitespace-only values are rejected rather
 than silently becoming unfiltered reads.
 
-Phase 3B frontend wiring remains pending: `/fa/indicators` and
-`/fa/indicators/[seriesId]` are still shells. Authentication is absent and public
-deployment remains prohibited. Phase 3A keeps package/OpenAPI version `0.7.0` and
-Alembic head `20260726_0009`.
+Historical Phase 3A note: the indicator frontend was still pending at that milestone.
+Phase 3B later completed `/fa/indicators` and `/fa/indicators/[seriesId]`; v0.8.0 then
+added the Stage B security boundary and fail-closed public publication contract. Phase 3A
+itself added no migration and did not move Alembic head `20260726_0009`.
 
 ## Architecture
 
@@ -119,6 +119,8 @@ Macro Data storage   src/macrovision/macro_data_models.py
 Indicator catalog    src/macrovision/indicator_catalog.py
 Indicator API        src/macrovision/indicator_api.py
 Indicator services   src/macrovision/indicator_services.py
+Public indicator API src/macrovision/public_indicator_api.py
+Publication policy   src/macrovision/publication_catalog.py
 Provider API         src/macrovision/provider_api.py
 Provider contracts   src/macrovision/provider_contracts.py
 Provider sync        src/macrovision/provider_services.py
