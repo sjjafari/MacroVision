@@ -16,10 +16,10 @@ vi.mock("@/lib/research/loader", () => ({
 import ResearchPage from "@/app/fa/research/page";
 
 describe("private research route", () => {
-  it("clearly marks the trusted-network mutation boundary", async () => {
+  it("clearly marks the authenticated research mutation boundary", async () => {
     render(await ResearchPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.getByRole("alert")).toHaveTextContent("فقط شبکهٔ مورد اعتماد");
-    expect(screen.getByRole("alert")).toHaveTextContent("Authentication");
+    expect(screen.getByRole("note")).toHaveTextContent("دسترسی پژوهشی کنترل‌شده");
+    expect(screen.getByRole("note")).toHaveTextContent("احراز هویت");
     expect(screen.getByText("Analytics مستند و قابل بازتولید")).toBeInTheDocument();
   });
 });
