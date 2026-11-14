@@ -1,32 +1,12 @@
 # MacroVision
 
-> **Web MVP v0.8 status:** all nine Persian routes are implemented. Phase 4 comparison, Phase 5 private research, reviewed Methodology/About content, and the Stage B production security/deployment boundary are present on `main`. Internet publication is still an operator action: production secrets, OAuth credentials, TLS certificates, authorized-user lists, PostgreSQL backup/restore verification, and deployment smoke must be configured and verified before exposure.
+MacroVision v0.8.0 is an Investment Decision Intelligence Platform with a Persian RTL Web MVP, vintage-aware macro data, deterministic versioned Analytics, evidence lineage, comparison, and a private research workspace. It is designed for hypothesis-driven research and auditable decision support, not trading signals, personalized financial advice, brokerage connectivity, or automatic trade execution.
 
-Web MVP Phase 4 adds a private, read-only multi-series comparison contract and Persian comparison workspace. It accepts at most four raw or persisted-derived selections, preserves independent timelines and exact Decimal strings, exposes frequency/axis warnings, supports historical as-of reads, and performs no implicit alignment, resampling, filling, provider synchronization, or Analytics execution. Public deployment remains prohibited until Stage B security gates are complete.
+The Web MVP implements exactly nine approved Persian routes: `/fa`, `/fa/markets`, `/fa/macro`, `/fa/indicators`, `/fa/indicators/[seriesId]`, `/fa/compare`, `/fa/research`, `/fa/methodology`, and `/fa/about`. Exact Decimal values remain authoritative; browser Number conversion is restricted to chart geometry. Historical as-of reads preserve no-look-ahead semantics and revision cutoffs.
 
-> MacroVision v0.7.0 provides the public, vintage-aware Macro Analytics API. Release
-> artifacts are produced only from reviewed commits merged into `main`.
+Production security is fail-closed. Public indicator reads require explicit code-reviewed publication eligibility and use a GET-only rate-limited namespace. Dashboards, comparison, research, management reads, and mutations remain behind the trusted ingress/RBAC boundary. The production topology includes GitHub OAuth2 Proxy, Redis-backed sessions, NGINX TLS/auth_request/rate limiting, PostgreSQL, backup/restore procedures, and isolated application networking.
 
-Web MVP Phase 3B connects the private Persian indicator catalog and indicator
-research routes to reviewed read contracts. Current and historical-as-of modes
-are visibly distinct and exact Decimal strings remain server-owned business
-data. This trusted-network preview has no authentication, public deployment,
-implicit Analytics execution, or public-eligibility claim.
-
-Historical indicator pages bound snapshots, raw charts, and visible revisions to
-the selected UTC knowledge cutoff; future revisions are suppressed. Related-derived
-results and lineage remain intentionally current-only in Phase 3B, so historical
-pages display an explicit unsupported state instead of falling back to current
-Analytics. Indicator charts react to system/forced-light theme changes using the
-shared design tokens, and technical missing reasons receive bounded Persian labels.
-
-MacroVision is an Investment Decision Intelligence Platform. Version 0.7.0 provides a
-local, auditable foundation for investor profiles, risk budgets, hypothesis-driven
-research journals, transaction-driven portfolio accounting, and versioned investment
-decision cases, immutable-vintage macroeconomic and market-data storage, and manual
-synchronization with FRED through a provider-independent integration layer, plus
-database-backed scheduled provider execution. It is not a trading signal bot and does
-not connect to brokers or execute trades.
+> **Deployment boundary:** merging or tagging v0.8.0 does not publish the application. Internet exposure still requires operator-supplied OAuth credentials, TLS certificates, strong production secrets, authorized-user lists, target-environment backup/restore verification, and deployment smoke.
 
 ## Decision principles
 
@@ -223,8 +203,8 @@ Or run each check:
 ## Docker
 
 ```powershell
-docker build -t macrovision:0.7.0 .
-docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.7.0
+docker build -t macrovision:0.8.0 .
+docker run --rm -p 8000:8000 -v macrovision-data:/data macrovision:0.8.0
 ```
 
 The container applies pending migrations before starting the API and persists SQLite
