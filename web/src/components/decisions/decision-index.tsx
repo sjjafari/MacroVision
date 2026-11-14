@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { DECISION_STATUS_FA,decisionCompleteness,type DecisionCase } from "@/lib/decisions/types";
+import { DecisionCreatePanel } from "./decision-actions";
 
-export function DecisionIndex({decisions}:{decisions:DecisionCase[]}) {
+export function DecisionIndex({decisions,error}:{decisions:DecisionCase[];error?:string}) {
   return <div className="page-stack decision-page">
     <header className="indicator-hero"><div><p className="eyebrow">Decision Intelligence · v0.9</p><h1>پرونده‌های تصمیم</h1><p>فرضیه، شواهد موافق و مخالف، نقد مستقل و شرایط ابطال را پیش از فعال‌کردن یک تصمیم کنار هم ببینید.</p></div><span className="preview-badge">محافظت‌شده</span></header>
+    <DecisionCreatePanel error={error}/>
     {decisions.length===0?<section className="state-card"><span className="state-symbol">○</span><div><h2>هنوز پرونده‌ای ثبت نشده است</h2><p>این Reader فقط پرونده‌های ماندگار Decision Engine را نمایش می‌دهد و هنگام بازشدن چیزی ایجاد نمی‌کند.</p></div></section>:
     <section className="decision-list" aria-label="فهرست پرونده‌های تصمیم">{decisions.map(d=>{
       const checks=decisionCompleteness(d),done=checks.filter(x=>x.complete).length;
